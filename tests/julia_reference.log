@@ -1,0 +1,75 @@
+  Activating project at `C:\work\SPA\SaddlepointExpansions.jl`
+    Updating registry at `C:\Users\manpa\.julia\registries\General.toml`
+   Installed Collects ──────────── v1.1.0
+   Installed LightBoundsErrors ─── v1.1.0
+   Installed CheckedSizeProduct ── v1.0.0
+   Installed FixedSizeArrays ───── v1.4.2
+   Installed LogExpFunctions ───── v1.0.3
+   Installed Preferences ───────── v1.6.1
+   Installed Reexport ──────────── v1.2.2
+   Installed TaylorSeries ──────── v0.23.2
+   Installed OrderedCollections ── v2.0.3
+   Installed DocStringExtensions ─ v0.10.0
+    Updating `C:\work\SPA\SaddlepointExpansions.jl\Project.toml`
+  [1fd47b50] + QuadGK v2.11.3
+  [276daf66] + SpecialFunctions v2.9.0
+  [6aa5eb33] + TaylorSeries v0.23.2
+  [37e2e46d] ~ LinearAlgebra ⇒ v1.13.0
+    Updating `C:\work\SPA\SaddlepointExpansions.jl\Manifest.toml`
+  [1b2cc9da] + CheckedSizeProduct v1.0.0
+  [08986516] + Collects v1.1.0
+  [864edb3b] + DataStructures v0.19.6
+  [ffbed154] + DocStringExtensions v0.10.0
+  [3821ddf9] + FixedSizeArrays v1.4.2
+  [92d709cd] + IrrationalConstants v0.2.6
+  [692b3bcd] + JLLWrappers v1.8.0
+  [e21c612c] + LightBoundsErrors v1.1.0
+  [2ab3a3ac] + LogExpFunctions v1.0.3
+  [bac558e1] + OrderedCollections v2.0.3
+  [21216c6a] + Preferences v1.6.1
+  [1fd47b50] + QuadGK v2.11.3
+  [189a3867] + Reexport v1.2.2
+  [276daf66] + SpecialFunctions v2.9.0
+  [6aa5eb33] + TaylorSeries v0.23.2
+  [efe28fd5] + OpenSpecFun_jll v0.5.6+0
+  [56f22d72] + Artifacts v1.11.0
+  [2a0f44e3] + Base64 v1.11.0
+  [ade2ca70] + Dates v1.11.0
+  [ac6e5ff7] + JuliaSyntaxHighlighting v1.12.0
+  [8f399da3] + Libdl v1.11.0
+  [37e2e46d] ~ LinearAlgebra ⇒ v1.13.0
+  [d6f4376e] + Markdown v1.11.0
+  [de0858da] + Printf v1.11.0
+  [9a3f8284] + Random v1.11.0
+  [ea8e919c] + SHA v1.0.0
+  [9e88b42a] + Serialization v1.11.0
+  [2f01184e] + SparseArrays v1.13.0
+  [f489334b] + StyledStrings v1.11.0
+  [fa267f1f] + TOML v1.0.3
+  [4ec0a83e] + Unicode v1.11.0
+  [e66e0078] + CompilerSupportLibraries_jll v1.5.5+2
+  [4536629a] + OpenBLAS_jll v0.3.30+0
+  [05823500] + OpenLibm_jll v0.8.7+0
+  [bea87d4a] + SuiteSparse_jll v7.10.1+0
+  [8e850b90] + libblastrampoline_jll v5.15.0+0
+Precompiling packages...
+   1.4 s  ✓ CheckedSizeProduct
+   1.4 s  ✓ LightBoundsErrors
+   1.4 s  ✓ Reexport
+   1.3 s  ✓ OrderedCollections
+   1.4 s  ✓ Collects
+   1.3 s  ✓ DocStringExtensions
+   1.1 s  ✓ Preferences
+   0.6 s  ✓ FixedSizeArrays
+   0.7 s  ✓ LogExpFunctions
+   0.6 s  ✓ FixedSizeArrays → FixedSizeArraysRandomExt
+   1.0 s  ✓ JLLWrappers
+   2.4 s  ✓ DataStructures
+   1.0 s  ✓ OpenSpecFun_jll
+   1.1 s  ✓ QuadGK
+   3.2 s  ✓ TaylorSeries
+   2.7 s  ✓ SpecialFunctions
+   1.9 s  ✓ SaddlepointExpansions
+  17 dependencies successfully precompiled in 9 seconds. 14 already precompiled.
+wrote 103 rows
+FINISHED 
