@@ -100,11 +100,24 @@ methods
 
    %---------------------------------------------------------------- saddlepoint and expansions
    function [tau, info] = saddlepoint(obj, x, tau0)
+      %SADDLEPOINT the saddlepoint K'(tau) = x by Newton's method with backtracking (spa_saddle);
+      %   tau0: optional starting value (default zeros).  info: iterations, Newton decrement,
+      %   residual.
       if nargin < 3, tau0 = []; end
       x = reshape(x, 1, []); if numel(x) ~= obj.d, error('CGF:x', 'saddlepoint: x must have length %d', obj.d); end
       [tau, info] = spa_saddle(cgf_kfun(obj, 2), x, tau0);
    end
    function r = tailprob(obj, x, varargin)
+      %TAILPROB orthant probability P(X >= x) by the expansion of Theorem 1, orders 1..order.
+      %   r = tailprob(K, x, 'order', M)                  P(X >= x)
+      %   r = tailprob(K, x, 'order', M, 'lower', true)   P(X <= x)
+      %   r = tailprob(K, x, 'order', M, 'signs', s)      mixed corner, s_j = +1 (>=) or -1 (<=)
+      %   Saddlepoints with negative components are handled by inclusion-exclusion (Theorem 2).
+      %   r.F(M): the approximation of order M (relative error O(n^-M)); r.tau: the saddlepoint;
+      %   r.status: 'ok' or a warning; r.info: diagnostics of the engine.  Other name-value
+      %   pairs go to the engine: 'nG', 'qtol', 'nGmax', 'method' ('quad' or 'qmc'), 'nqmc',
+      %   'nshift', 'seed', 'logscale' (d = 2); see spa_bi, spa_tri, spa_mv.
+      %   d = 1: Hauschildt-Robinson (Corollary 3); d = 2: spa_orthant2; d >= 3: spa_orthant.
       [order, lower, signs, opts] = parseopts('tailprob', obj.d, varargin{:});
       x = reshape(x, 1, []);
       if numel(x) ~= obj.d, error('CGF:x', 'tailprob: x must have length %d', obj.d); end
@@ -131,6 +144,10 @@ methods
       end
    end
    function r = density(obj, x, varargin)
+      %DENSITY density of X at x by the expansion of Theorem 3 (Daniels, Corollary 2, for d = 1).
+      %   r = density(K, x, 'order', M).  r.f(M): the approximation of order M (relative error
+      %   O(n^-M)); r.tau: the saddlepoint; r.status; r.info (for d >= 3, kappa_pdf: the
+      %   cancellation among the terms).  Other name-value pairs go to spa_bi or spa_mv.
       [order, ~, ~, opts] = parseopts('density', obj.d, varargin{:});
       x = reshape(x, 1, []);
       if numel(x) ~= obj.d, error('CGF:x', 'density: x must have length %d', obj.d); end
