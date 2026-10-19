@@ -35,3 +35,21 @@ fprintf('P(R >= 1.2), orders 1-4:          %s\n', sprintf('%.8f ', ratio_tailpro
 Ku = uniform_cgf();                           % uniform on [-1, 1]: K(t) = log(sinh(t)/t)
 D = derivatives(Ku, 0, 8);
 fprintf('cumulants of the uniform distribution on [-1,1]: %s\n', mat2str(D.value(2:end)', 6));
+
+%% 6. Two sample autocorrelations (Section 6 of the paper): R_j = z'MA_jMz/z'Mz, j = 1, 2,
+% z ~ N(0, I_50), M = I - 11'/50, (A_j)_ts = 1/2 for |t - s| = j; a common denominator, so K is the
+% joint cgf of the three quadratic forms (dimension d + 1 = 3)
+N = 50; Mc = eye(N) - ones(N)/N; Aj = @(j) (diag(ones(N-j, 1), j) + diag(ones(N-j, 1), -j))/2;
+Kr = quadratic_forms_cgf({Mc*Aj(1)*Mc, Mc*Aj(2)*Mc, Mc});
+r0 = [-1 -1]/sqrt(N);
+Fex = 2.373966512166858033207522e-2; fex = 3.935188945615940593490785;   % exact (25 digits)
+f = ratio_density(Kr, r0, 'order', 5).f; F = ratio_tailprob(Kr, r0, 'order', 5, 'lower', true).F;
+fprintf('autocorrelations at %s: relative errors of the density %s\n', mat2str(r0, 4), sprintf('%9.1e', f/fex - 1));
+fprintf('                                  relative errors of P(R <= r) %s\n', sprintf('%9.1e', F/Fex - 1));
+
+%% 7. Three ratios with a common denominator: R_j = X_j/Y, X_j ~ Gamma(a_j), Y ~ Gamma(b)
+a = [3 4 5]; b = 6; r0 = [0.6 0.5 0.9];
+Kd = CGF(@(t) -sum(a(:).*log(1 - t(1:3))) - b*log(1 - t(4)), 4, 'domain', @(t) all(t < 1));
+fex = exp(gammaln(sum(a) + b) - sum(gammaln(a)) - gammaln(b))*prod(r0.^(a - 1))*(1 + sum(r0))^(-(sum(a) + b));
+f = ratio_density(Kd, r0, 'order', 5).f;
+fprintf('three ratios: relative errors of the density, orders 1-5: %s\n', sprintf('%9.1e', f/fex - 1));

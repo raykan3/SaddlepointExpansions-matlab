@@ -5,6 +5,7 @@ function f = cgf_kwhite(K, maxdeg)
 lastu = []; lastM = []; lastp = []; lastN = -1; valid = false;
 f = @Kwhite;
    function v = Kwhite(nu, u, M)
+      if isa(u, 'sym') || isa(M, 'sym'), error('CGF:precision', 'the Taylor class works in double precision only'); end
       u = double(reshape(u, [], 1)); M = double(M);
       N = max(maxdeg, sum(nu));
       if ~valid || ~isequal(u, lastu) || ~isequal(M, lastM) || N > lastN

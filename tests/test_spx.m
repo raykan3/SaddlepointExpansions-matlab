@@ -77,6 +77,34 @@ A = [1 0 0; 0 1 0; 0 0 1; 1 1 0; 0 1 1];
 Ke = exponential_sums_cgf(A, 'n', 6);
 ok = cmp('expsum3 F', tailprob(Ke, [2.2 2.6 1.9], 'order', 3).F, get("expsum3", "F"), verbose, 1e-8) && ok;
 ok = cmp('expsum3 f', density(Ke, [2.2 2.6 1.9], 'order', 3).f, get("expsum3", "f"), verbose) && ok;
+% several ratios (Theorem 4): the d-ratio code at d = 1 against Rice's expansion, and the
+% inverted Dirichlet R_j = X_j/Y (X_j ~ Gamma(a_j), Y ~ Gamma(b)) against its closed form
+ok = cmp('ratio d=1 general code', ratio_density(Kq, 1.2, 'order', 4, 'general', true).f, get("ratio_qf", "f"), verbose) && ok;
+aa = [3 4 5]; b = 6; rr = [0.6 0.5 0.9];
+idir = @(a, b, r) exp(gammaln(sum(a)+b) - sum(gammaln(a)) - gammaln(b))*prod(r.^(a-1))*(1+sum(r))^(-(sum(a)+b));
+idirF = @(a, b, r) integral(@(y) prod(gammainc(r(:)*y, repmat(a(:), 1, numel(y))), 1).*y.^(b-1).*exp(-y)/gamma(b), 0, Inf, 'RelTol', 1e-13, 'AbsTol', 0);
+for d = 2:3
+   a = aa(1:d); r = rr(1:d);
+   Kd = CGF(@(t) -sum(a(:).*log(1 - t(1:d))) - b*log(1 - t(d+1)), d+1, 'domain', @(t) all(t < 1));
+   f = ratio_density(Kd, r, 'order', 5).f;
+   ok = check(sprintf('%d ratios f, order 5', d), f(5), idir(a, b, r), 1e-5, verbose) && ok;
+   M = 6 - d;  F = ratio_tailprob(Kd, r, 'order', M, 'lower', true).F;
+   ok = check(sprintf('%d ratios F, order %d', d, M), F(M), idirF(a, b, r), 2e-5, verbose) && ok;
+end
+e = zeros(2, 1);                                  % rate O(n^-4) of the order-4 density
+for i = 1:2
+   n = 4*i; a = n*aa(1:2); bn = n*b;
+   Kd = CGF(@(t) -sum(a(:).*log(1 - t(1:2))) - bn*log(1 - t(3)), 3, 'domain', @(t) all(t < 1));
+   f = ratio_density(Kd, rr(1:2), 'order', 4).f; e(i) = abs(f(4)/idir(a, bn, rr(1:2)) - 1);
+end
+ok = check('2 ratios f, rate n^-4', min(e(1)/e(2), 16), 16, 0.25, verbose) && ok;
+a = [4 5 6 7]; r = [0.9 0.5];                     % independent ratios X_j/Y_j, K of dimension 2d
+K4 = CGF(@(t) -sum(a(:).*log(1 - t)), 4, 'domain', @(t) all(t < 1));
+bp = @(x, p, q) x^(p-1)*(1+x)^(-p-q)/beta(p, q);
+f = ratio_density(K4, r, 'order', 5).f;
+ok = check('2 indep. ratios f', f(5), bp(r(1), a(1), a(3))*bp(r(2), a(2), a(4)), 1e-5, verbose) && ok;
+F = ratio_tailprob(K4, r, 'order', 4, 'lower', true).F;
+ok = check('2 indep. ratios F', F(4), betainc(r(1)/(1+r(1)), a(1), a(3))*betainc(r(2)/(1+r(2)), a(2), a(4)), 1e-5, verbose) && ok;
 if ok, fprintf('all tests passed\n'); else, fprintf('SOME TESTS FAILED\n'); end
 end
 

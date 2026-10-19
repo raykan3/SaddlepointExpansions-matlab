@@ -22,4 +22,4 @@
 % Engine (folder engine): spa_saddle, spa_uni, spa_bi, spa_orthant2, spa_orthant, spa_mv, spa_tri,
 %   spa_ratio_pdf, qf_Kmulti, ncx2_spa, ncf_spa, dncf_spa, ... (derivative interface Kfun(nu, t))
 %
-% Tests and examples: tests/test_spx, examples/demo_spx
+% Tests, examples and manual: tests/test_spx, examples/demo_spx, doc/manual.pdf

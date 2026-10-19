@@ -5,6 +5,7 @@ function f = cgf_kfun(K, maxdeg)
 lastt = []; lastN = -1; lastp = []; valid = false;
 f = @Kfun;
    function v = Kfun(nu, t)
+      if isa(t, 'sym'), error('CGF:precision', 'the Taylor class works in double precision only'); end
       kk = sum(nu);
       if kk <= 2, N = 2; else, N = max(maxdeg, kk); end
       t = double(reshape(t, [], 1));

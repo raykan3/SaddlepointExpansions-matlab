@@ -22,9 +22,11 @@ classdef CGF
 %                                            mixed corner; inclusion-exclusion for saddlepoints
 %                                            with negative components.  r.F(M), r.tau, r.status,
 %                                            r.info
-%      r = density(K, x, 'order', 3)         density (Theorem 2); r.f(M)
-%      r = ratio_density(K, r0, 'order', 3)  density of X1/X2 at r0 (d = 2, X2 > 0); r.f(M)
-%      r = ratio_tailprob(K, r0, 'order', 3) P(X1/X2 >= r0) ('lower', true: <=); r.F(M)
+%      r = density(K, x, 'order', 3)         density (Theorem 3); r.f(M)
+%      r = ratio_density(K, r0, 'order', 3)  joint density of R_j = X_j/Y_j, j = 1..numel(r0),
+%                                            Y_j > 0 (Theorem 4); K of (X, Y) (dimension 2d) or
+%                                            of (X, Y) with a common denominator (d + 1); r.f(M)
+%      r = ratio_tailprob(K, r0, 'order', 3) P(R >= r0) ('lower', true: <=; 'signs', s); r.F(M)
 %      [tau, info] = saddlepoint(K, x)       the saddlepoint K'(tau) = x
 %      D = derivatives(K, t, N)              all derivatives of order <= N at t: D.nu, D.value
 %   Other name-value pairs of tailprob and density are passed to the engine (spa_orthant2,
@@ -153,23 +155,38 @@ methods
       end
    end
    function r = ratio_density(obj, r0, varargin)
-      [order, ~, ~, ~] = parseopts('ratio_density', obj.d, varargin{:});
-      if obj.d ~= 2, error('CGF:dim', 'ratio_density: K must be the joint cgf of the numerator and the denominator (d = 2)'); end
-      KW = linear_combination(obj, [1; -r0]);
-      [s, sinfo] = spa_saddle(cgf_kfun(KW, 2), 0, []);
-      N = 2*order + 1;
-      P = taylor(obj, [s; -r0*s], N, [1 0; -r0 1]);   % K(s + v1, -r(s + v1) + v2)
-      if isempty(P), error('CGF:domain', 'ratio_density: the saddlepoint is outside the domain of K'); end
-      KWd = coef(P, [(0:2*order)' zeros(2*order+1, 1)]).';
-      gd = coef(P, [(0:2*order-2)' ones(2*order-1, 1)]).';
-      f = spa_ratio_pdf(KWd, gd, s, order);
-      r = struct('f', f(:), 'shat', s, 'status', 'ok', 'info', struct('KWd', KWd, 'gd', gd, 'saddle', sinfo));
+      %RATIO_DENSITY density of R = (X_1/Y_1, ..., X_d/Y_d) at r0 (d = numel(r0), Y_j > 0).
+      %   K is the cgf of (X_1..X_d, Y_1..Y_d) (dimension 2d), or of (X_1..X_d, Y) (dimension
+      %   d + 1) for a common denominator Y.  d = 1: Rice's expansion (Corollary 5); d >= 2:
+      %   Theorem 4 and Corollary 1.  r.f(M), M = 1..order; r.shat the saddlepoint of K_W.
+      [order, ~, ~, opts] = parseopts('ratio_density', numel(r0), varargin{:});
+      r0 = reshape(r0, 1, []); d = numel(r0); K2 = ratiocgf(obj, d, 'ratio_density');
+      if d == 1 && ~isfield(opts, 'general')          % 'general', true: the d-ratio code for d = 1
+         KW = linear_combination(K2, [1; -r0]);
+         [s, sinfo] = spa_saddle(cgf_kfun(KW, 2), 0, []);
+         N = 2*order + 1;
+         P = taylor(K2, [s; -r0*s], N, [1 0; -r0 1]);   % K(s + v1, -r(s + v1) + v2)
+         if isempty(P), error('CGF:domain', 'ratio_density: the saddlepoint is outside the domain of K'); end
+         KWd = coef(P, [(0:2*order)' zeros(2*order+1, 1)]).';
+         gd = coef(P, [(0:2*order-2)' ones(2*order-1, 1)]).';
+         f = spa_ratio_pdf(KWd, gd, s, order);
+         r = struct('f', f(:), 'shat', s, 'status', 'ok', 'info', struct('KWd', KWd, 'gd', gd, 'saddle', sinfo));
+      else
+         [f, info] = ratio_mv(K2, r0, order);
+         r = struct('f', f(:), 'shat', info.shat, 'status', 'ok', 'info', info);
+      end
    end
    function r = ratio_tailprob(obj, r0, varargin)
-      [order, lower, ~, ~] = parseopts('ratio_tailprob', obj.d, varargin{:});
-      if obj.d ~= 2, error('CGF:dim', 'ratio_tailprob: K must be the joint cgf of the numerator and the denominator (d = 2)'); end
-      KW = linear_combination(obj, [1; -r0]);
-      t = tailprob(KW, 0, 'order', order, 'lower', lower);
+      %RATIO_TAILPROB P(R >= r0) for R = (X_1/Y_1, ..., X_d/Y_d), Y_j > 0, as the orthant
+      %   probability P(W >= 0) of W = X - r0.*Y (Corollary 4 for d = 1, Theorems 1 and 2
+      %   otherwise); 'lower', true gives P(R <= r0) and 'signs', s a mixed corner.  K as in
+      %   ratio_density.  Other name-value pairs go to tailprob.  r.F(M), r.shat.
+      [order, lower, signs, opts] = parseopts('ratio_tailprob', numel(r0), varargin{:});
+      r0 = reshape(r0, 1, []); d = numel(r0); K2 = ratiocgf(obj, d, 'ratio_tailprob');
+      KW = linear_combination(K2, [eye(d); -diag(r0)]);
+      args = [fieldnames(opts)'; struct2cell(opts)'];
+      if ~isempty(signs), args = [args(:)' {'signs', signs}]; end
+      t = tailprob(KW, zeros(1, d), 'order', order, 'lower', lower, args{:});
       r = struct('F', t.F, 'shat', t.tau, 'status', t.status, 'info', t.info);
    end
 
@@ -220,6 +237,12 @@ end
 function y = ifelse(c, a, b), if c, y = a; else, y = b; end, end
 function p = lc_taylor(obj, B, u, N, M)
    if isempty(M), p = taylor(obj, B*u, N, B); else, p = taylor(obj, B*u, N, B*M); end
+end
+function K2 = ratiocgf(obj, d, name)
+   if obj.d == 2*d, K2 = obj;
+   elseif obj.d == d + 1, K2 = linear_combination(obj, [eye(d) zeros(d); zeros(1, d) ones(1, d)]);
+   else, error('CGF:dim', '%s: K must have dimension 2d (numerators, denominators) or d + 1 (common denominator), d = %d', name, d);
+   end
 end
 function p = scaled(p, n), if ~isempty(p), p = n*p; end, end
 function p = addseries(p1, p2), if isempty(p1) || isempty(p2), p = []; else, p = p1 + p2; end, end

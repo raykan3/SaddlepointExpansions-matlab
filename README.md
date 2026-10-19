@@ -4,7 +4,8 @@ Saddlepoint expansions of any order for tail probabilities and densities of rand
 from the cumulant generating function alone. This is the MATLAB counterpart of the Julia package
 [SaddlepointExpansions.jl](https://github.com/s-broda/SaddlepointExpansions.jl) and implements the
 expansions of Broda and Kan: the orthant probability `P(X >= x)` of a random vector in any
-dimension, its density, and the density and distribution function of a ratio, with the
+dimension, its density, and the joint density and distribution function of a vector of ratios
+`(X_1/Y_1, ..., X_d/Y_d)`, with the
 univariate expansions of Daniels and of Hauschildt and Robinson as the one-dimensional case. The
 expansion of order `M` has relative error `O(n^-M)`; saddlepoints with negative components are
 handled by inclusion-exclusion.
@@ -34,8 +35,8 @@ r = tailprob(Kn, [3 3], 'lower', true);     % P(mean1 <= 3, mean2 <= 3)
 | `CGF(fun, d, 'domain', pred)` | a cumulant generating function `fun(t)`, `t` a `d x 1` vector |
 | `tailprob(K, x, 'order', M, 'lower', tf, 'signs', s)` | orthant probabilities of orders `1..M` (`r.F`), saddlepoint `r.tau`, `r.status`, `r.info` |
 | `density(K, x, 'order', M)` | densities of orders `1..M` (`r.f`) |
-| `ratio_density(K, r0, 'order', M)` | density of `X1/X2` at `r0` (`d = 2`, `X2 > 0`) |
-| `ratio_tailprob(K, r0, 'order', M, 'lower', tf)` | `P(X1/X2 >= r0)` or `<=` |
+| `ratio_density(K, r0, 'order', M)` | joint density of `R = (X_1/Y_1, ..., X_d/Y_d)` at `r0`, `d = numel(r0)`, `Y_j > 0`; `K` is the cgf of `(X, Y)` (dimension `2d`) or, for a common denominator, of `(X_1, ..., X_d, Y)` (dimension `d + 1`) |
+| `ratio_tailprob(K, r0, 'order', M, 'lower', tf, 'signs', s)` | `P(R >= r0)`, `P(R <= r0)` or a mixed corner |
 | `saddlepoint(K, x)` | the saddlepoint `K'(tau) = x` |
 | `derivatives(K, t, N)` | all derivatives of orders `<= N` at `t` (`D.nu`, `D.value`) |
 | `reflect`, `marginal`, `linear_combination`, `sample_mean`, `shift`, `K1 + K2` | transformations |
@@ -57,6 +58,17 @@ written as a Cholesky factorization in plain arithmetic (see `tests/test_spx.m`)
 quadratic forms in normal vectors, `quadratic_forms_cgf` computes the derivatives in closed form
 by the trace recursion of the paper, which is much faster for large matrices.
 
+Several ratios, for example the sample autocorrelations at lags 1 and 2 of 50 observations:
+
+```matlab
+N = 50; M = eye(N) - ones(N)/N; A = @(j) (diag(ones(N-j,1), j) + diag(ones(N-j,1), -j))/2;
+K = quadratic_forms_cgf({M*A(1)*M, M*A(2)*M, M});   % common denominator z'Mz
+ratio_density(K, [-1 -1]/sqrt(N), 'order', 5).f
+ratio_tailprob(K, [-1 -1]/sqrt(N), 'order', 5, 'lower', true).F
+```
+
+The full manual is `doc/manual.pdf`.
+
 ## Folders
 
 * the top folder: `CGF`, `tps`, the library and `spx_setup`;
@@ -66,8 +78,10 @@ by the trace recursion of the paper, which is much faster for large matrices.
   `Kfun(nu, t)` and can be used directly when closed-form derivatives are available;
 * `tests/test_spx.m`: checks against closed forms and against the Julia package
   (`julia_reference.csv`, made by `julia_reference.jl`); every expansion agrees to about
-  `1e-13` relative;
-* `examples/demo_spx.m`: examples.
+  `1e-13` relative; the expansions for several ratios, which the Julia package does not have,
+  are checked against closed forms;
+* `examples/demo_spx.m`: examples;
+* `doc/`: the manual (`manual.pdf`, source `manual.tex`).
 
 ## Differences from the Julia package
 
