@@ -6,7 +6,7 @@ function [pdf,cdf] = spa_uni_hp(Kd,shat,xbar,order)
 %   log10(u^(2m+1)/m!) digits at index m, u = shat*sqrt(K''); digits() must exceed that loss
 %   (for m <= 33 and |u| <= 10 about 20 digits) by the accuracy wanted.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 p = 2*order-1;
 N = p+2;
 Kd = vpa(Kd(:)); shat = vpa(shat); xbar = vpa(xbar);

@@ -71,7 +71,7 @@ function [pdf,Fup,tau,canc,kappa,qerr,info] = spa_bi(Kfun,x,order,tau0,gamfun,nG
 %   expansions, and Appendix B of this paper), provided the whitened coefficients are formed
 %   accurately (directly by opts.Kwhite, or by substitution when info.coef_err_* is small).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 4 || isempty(tau0), tau0 = [0 0]; end
 if nargin < 5, gamfun = []; end
 if nargin < 6 || isempty(nG), nG = 200; end

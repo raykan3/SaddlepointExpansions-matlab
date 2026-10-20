@@ -26,7 +26,7 @@ function [pdf,cdf,aij,upp,kappa] = spa_uni(Kd,shat,xbar,order,uthr)
 %   the left of the pole are -(-1)^m I_m(|u|).  Both branches are scaled by phi(u), so that
 %   nothing overflows for large |u|.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 5, uthr = 2.5; end
 if ~(isscalar(order) && double(order) >= 1 && order == round(order)), error('spa_uni: order must be a positive integer'); end
 if ~(isscalar(shat) && isscalar(xbar)), error('spa_uni: shat and xbar must be scalars'); end

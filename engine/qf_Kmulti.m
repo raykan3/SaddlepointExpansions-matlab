@@ -6,7 +6,7 @@ function [K,alist] = qf_Kmulti(theta,Mats,L)
 %   K is a containers.Map from the string of alpha (e.g. '1 0 2') to the value; K('0 0 0') = K(theta).
 %   Returns K = [] if I - 2C is not positive definite (theta outside the domain).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 p = numel(Mats); N = size(Mats{1},1);
 C = zeros(N); for i = 1:p, C = C+theta(i)*Mats{i}; end
 Q = eye(N)-2*C;

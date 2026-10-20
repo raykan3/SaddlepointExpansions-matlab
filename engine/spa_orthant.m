@@ -15,7 +15,7 @@ function [Fup,tau,err] = spa_orthant(Kfun,x,order,opts)
 %   therefore accept a rectangular d x k matrix in place of T (the cgf of Y = M' X, of dimension
 %   k), as it does when it is written in terms of K(M u) for a general matrix M.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 4, opts = struct(); end
 if ~isa(Kfun,'function_handle'), error('spa_orthant: Kfun must be a function handle'); end
 if ~isnumeric(x) || isempty(x) || ~all(isfinite(x(:))), error('spa_orthant: x must be a finite numeric vector'); end

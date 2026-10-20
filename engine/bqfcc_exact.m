@@ -6,7 +6,7 @@ function [Fup,pdf,Flo] = bqfcc_exact(x1,x2,m,lam)
 %   the upper tails are computed directly, so that small probabilities keep their relative
 %   accuracy).  The values in bqfcc_exact.csv were computed in 30-digit arithmetic.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 f0 = @(s) ncx2pdf(s,m(3),lam(3));
 opts = {'AbsTol',1e-300,'RelTol',1e-12};
 Fup = integral(@(s) f0(s).*ncx2cdf(x1-s,m(1),lam(1),'upper').*ncx2cdf(x2-s,m(2),lam(2),'upper'),0,Inf,opts{:}) ...

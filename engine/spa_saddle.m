@@ -26,7 +26,7 @@ function [tau,info] = spa_saddle(Kfun,x,tau0)
 %   all tests are made in the working precision (the Hessian is tested for positive definiteness
 %   after scaling to unit diagonal).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 d = numel(x); x = reshape(x,1,d);
 if nargin < 3 || isempty(tau0), tau0 = zeros(1,d,'like',x); end
 tau = reshape(tau0,1,d);

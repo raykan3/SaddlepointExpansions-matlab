@@ -11,7 +11,7 @@ function [cdf,pdf,upp,kappa] = ncf_spa(f,m,n,lam,order)
 %   cdf(M) are lost to rounding in double precision (an arithmetic error, distinct from the
 %   asymptotic error of the expansion).  The values are not clipped to [0,1].
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 validate(f,m,n,lam,order);
 c = m*f/n;
 A = -4*c*(m+n); B = 2*(c*m-m+c*lam+2*c*n); C = m+lam-c*n;

@@ -7,7 +7,7 @@ function [cdf,pdf,upp,kappa] = ncx2_spa(x,nu,lam,order)
 %   in the form that is stable for small lam.  kappa(M): cancellation indicator of the cdf sum
 %   (see spa_uni).  The values are not clipped to [0,1].
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if ~(isscalar(x) && x > 0 && isfinite(x)), error('ncx2_spa: x must be a positive scalar'); end
 if ~(isscalar(nu) && nu > 0 && isscalar(lam) && lam >= 0), error('ncx2_spa: invalid nu or lam'); end
 if ~(isscalar(order) && order >= 1 && order == round(order)), error('ncx2_spa: order must be a positive integer'); end

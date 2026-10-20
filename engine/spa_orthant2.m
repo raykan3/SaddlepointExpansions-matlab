@@ -11,7 +11,7 @@ function [Fup,tau,canc,kappa,info] = spa_orthant2(Kfun,x,order,opts)
 %   info: the info struct of spa_bi for the bivariate term (status, quadrature nodes,
 %   coefficient-error estimates).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 4, opts = struct(); end
 if isfield(opts,'logscale'), c = opts.logscale; else, c = 0; end
 [~,Fup,tau,canc,kappa,~,info] = spa_bi(Kfun,x,order,[],[],[],opts); canc = canc(end); kappa = kappa(end);
