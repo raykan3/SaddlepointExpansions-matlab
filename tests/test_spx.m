@@ -105,6 +105,80 @@ f = ratio_density(K4, r, 'order', 5).f;
 ok = check('2 indep. ratios f', f(5), bp(r(1), a(1), a(3))*bp(r(2), a(2), a(4)), 1e-5, verbose) && ok;
 F = ratio_tailprob(K4, r, 'order', 4, 'lower', true).F;
 ok = check('2 indep. ratios F', F(4), betainc(r(1)/(1+r(1)), a(1), a(3))*betainc(r(2)/(1+r(2)), a(2), a(4)), 1e-5, verbose) && ok;
+%% the shared cases of the Julia and Python packages (second part of julia_reference.csv)
+sv = @(c) R.("case") == c;
+dcmp = @(name, c, K, t, N) cmp(name, derivs(K, t, N, R(sv(c) & startsWith(R.quantity, "deriv_"), :)), ...
+   R.value(sv(c) & startsWith(R.quantity, "deriv_")), verbose);
+Aw = [1 0; 1 1; 0 1];
+Kwg = exponential_sums_cgf(Aw, 'n', 10, 'shift', [-2 -2]);         % Wang's example
+ok = dcmp('wang derivatives', "wang", Kwg, [0.3; -0.2], 7) && ok;
+ok = cmp('wang tau', saddlepoint(Kwg, [-0.5 -0.5]), get("wang", "tau"), verbose) && ok;
+r = tailprob(Kwg, [-0.5 -0.5], 'order', 5, 'lower', true);
+ok = cmp('wang Flow', [r.F; r.tau(:)], [get("wang", "Flow"); get("wang", "Flow_tau")], verbose) && ok;
+r = tailprob(Kwg, [-1 2], 'order', 5, 'lower', true);
+ok = cmp('wang Flow2', [r.F; r.tau(:)], [get("wang", "Flow2"); get("wang", "Flow2_tau")], verbose) && ok;
+r = tailprob(Kwg, [-0.8 0.5], 'order', 3);
+ok = cmp('wang Fie', [r.F; r.tau(:)], [get("wang", "Fie"); get("wang", "Fie_tau")], verbose) && ok;
+ok = cmp('wang f', density(Kwg, [-0.5 -0.5], 'order', 4).f, get("wang", "f"), verbose) && ok;
+K5 = exponential_sums_cgf(Aw, 'n', 5);                              % Kolassa and Li
+pts = {"F33", [3 3], 5; "Fbdry", [2.5 3], 5; "Ffar", [6 7], 4};
+for i = 1:3
+   r = tailprob(K5, pts{i, 2}, 'order', pts{i, 3});
+   ok = cmp(sprintf('kl %s', pts{i, 1}), [r.F; r.tau(:)], [get("kl", pts{i, 1}); get("kl", pts{i, 1} + "_tau")], verbose) && ok;
+end
+mm = [15 20 10]; ll = [5 10 8]; Kcc = common_component_cgf(mm, ll);  % pairs of quadratic forms
+ok = cmp('bqf F', tailprob(Kcc, [55 70], 'order', 4).F, get("bqf", "F"), verbose) && ok;
+ok = cmp('bqf f', density(Kcc, [55 70], 'order', 4).f, get("bqf", "f"), verbose) && ok;
+ok = cmp('bqf Flow', tailprob(Kcc, [40 60], 'order', 3, 'lower', true).F, get("bqf", "Flow"), verbose) && ok;
+[Fx, fx] = bqfcc_exact(55, 70, mm, ll); [~, ~, Fl] = bqfcc_exact(40, 60, mm, ll);
+ok = cmp('bqf exact', [Fx; fx; Fl], [get("bqf", "F_exact"); get("bqf", "f_exact"); get("bqf", "Flow_exact")], verbose, 1e-8) && ok;
+m3 = [15 20 25 10]; l3 = [5 10 0 8]; K3 = common_component_cgf(m3, l3);   % trivariate
+ok = cmp('tri F', tailprob(K3, [80 95 100], 'order', 4).F, get("tri", "F"), verbose, 1e-8) && ok;
+ok = cmp('tri f', density(K3, [80 95 100], 'order', 4).f, get("tri", "f"), verbose) && ok;
+r = tailprob(K3, [55 70 75], 'order', 3);
+ok = cmp('tri Fie', [r.F; r.tau(:)], [get("tri", "Fie"); get("tri", "Fie_tau")], verbose, 1e-8) && ok;
+Kwi = wishart_diag_cgf(0.75*eye(3) + 0.25, 5);                       % Wishart diagonal
+ok = dcmp('wishart3 derivatives', "wishart3", Kwi, [0.05; -0.02; 0.03], 6) && ok;
+ok = cmp('wishart3 F', tailprob(Kwi, [6.5 6.5 7.5], 'order', 3).F, get("wishart3", "F"), verbose, 1e-8) && ok;
+K4 = common_component_cgf([15 20 25 30 10], [5 10 0 3 8]); x4 = [70 85 95 105];   % d = 4
+ok = cmp('d4 f', density(K4, x4, 'order', 3).f, get("d4", "f"), verbose) && ok;
+r = tailprob(K4, x4, 'order', 3);                                     % quasi-Monte Carlo: within the errors
+e = abs(r.F - get("d4", "F"))./(3*(abs(r.info.err(:)) + abs(get("d4", "F_err"))));
+if verbose || max(e) > 1, fprintf('%-24s max |diff|/(3 s.e.) %5.2f  %s\n', 'd4 F (quasi-MC)', max(e), ifelse(max(e) <= 1, 'ok', 'FAILED')); end
+ok = max(e) <= 1 && ok;
+Kg = gamma_cgf(3);                                                    % univariate
+r = tailprob(Kg, 6, 'order', 4);
+ok = cmp('gamma3 F', [r.F; r.tau], [get("gamma3", "F"); get("gamma3", "tau")], verbose) && ok;
+ok = cmp('gamma3 Flow', tailprob(Kg, 6, 'order', 4, 'lower', true).F, get("gamma3", "Flow"), verbose) && ok;
+ok = cmp('gamma3 f', density(Kg, 6, 'order', 4).f, get("gamma3", "f"), verbose) && ok;
+ok = cmp('gamma3 Ffar', tailprob(Kg, 20, 'order', 5).F, get("gamma3", "Ffar"), verbose) && ok;
+Kx = ncx2_cgf(5, 10);
+ok = cmp('ncx2b F', tailprob(Kx, 30, 'order', 6).F, get("ncx2b", "F"), verbose) && ok;
+ok = cmp('ncx2b f', density(Kx, 30, 'order', 6).f, get("ncx2b", "f"), verbose) && ok;
+Ku10 = sample_mean(uniform_cgf(), 10);                                % uniform
+ok = cmp('uniform10 F', tailprob(Ku10, 0.3, 'order', 4).F, get("uniform10", "F"), verbose) && ok;
+ok = cmp('uniform10 f', density(Ku10, 0.3, 'order', 4).f, get("uniform10", "f"), verbose) && ok;
+ok = dcmp('uniform derivatives', "uniform10", uniform_cgf(), 0, 6) && ok;
+Kb = CGF(@(t) log(sinhc(t(1))) + log(sinhc(t(1) + t(2))) + log(sinhc(t(2))), 2);
+r = tailprob(sample_mean(Kb, 8), [0.4 0.3], 'order', 3);
+ok = cmp('uniform bivariate', [r.F; r.tau(:)], [get("uniform10", "Fbi"); get("uniform10", "Fbi_tau")], verbose) && ok;
+m_ = 4; n_ = 12; lam = 3; c = 2.5*m_/n_;                               % noncentral F as a ratio
+K1 = ncx2_cgf(m_, lam); K2 = ncx2_cgf(n_);
+KF = CGF(@(t) K1.fun(t(1)) + K2.fun(t(2)), 2, 'domain', @(t) t(1) < 0.5 && t(2) < 0.5);
+q = ratio_density(KF, c, 'order', 4);
+ok = cmp('ncf f', [q.f; q.shat], [get("ncf", "f"); get("ncf", "shat")], verbose) && ok;
+ok = cmp('ncf Flow', ratio_tailprob(KF, c, 'order', 4, 'lower', true).F, get("ncf", "Flow"), verbose) && ok;
+ok = cmp('ncf F', ratio_tailprob(KF, c, 'order', 4).F, get("ncf", "F"), verbose) && ok;
+S = [1 0.6; 0.6 2];                                                   % mixed corner
+ok = cmp('normal mixed', tailprob(normal_cgf([0; 0], S), [0.5 -0.3], 'order', 2, 'signs', [1 -1]).F, get("normal_mixed", "F"), verbose) && ok;
+a = [3 4 5 6];                                                        % several ratios
+Kg4 = CGF(@(t) -sum(a(:).*log(1 - t)), 4, 'domain', @(t) all(t < 1));
+ok = cmp('ratio2 f', ratio_density(Kg4, [0.7 0.9], 'order', 5).f, get("ratio2", "f"), verbose) && ok;
+ok = cmp('ratio2 Flow', ratio_tailprob(Kg4, [0.7 0.9], 'order', 5, 'lower', true).F, get("ratio2", "Flow"), verbose) && ok;
+ok = cmp('ratio2 F', ratio_tailprob(Kg4, [0.7 0.9], 'order', 5).F, get("ratio2", "F"), verbose) && ok;
+Kg3 = CGF(@(t) -3*log(1 - t(1)) - 4*log(1 - t(2)) - 5*log(1 - t(3)), 3, 'domain', @(t) all(t < 1));
+ok = cmp('ratio2 common', ratio_density(Kg3, [0.5 0.8], 'order', 4).f, get("ratio2", "f_common"), verbose) && ok;
+ok = cmp('ratio2 general d=1', ratio_density(Kq, 1.2, 'order', 4, 'general', true).f, get("ratio2", "f_qf_general"), verbose) && ok;
 if ok, fprintf('all tests passed\n'); else, fprintf('SOME TESTS FAILED\n'); end
 end
 
@@ -125,11 +199,20 @@ w = y; for i = n:-1:1, s = y(i); for k = i+1:n, s = s - L(k, i)*w(k); end, w(i) 
 v = v + sum(b.*w);
 end
 
+function v = derivs(K, t, N, Rd)
+% the derivatives of K at t named in the rows Rd ("deriv_i_j...") of the reference table
+D = derivatives(K, t, N); v = zeros(height(Rd), 1);
+for i = 1:height(Rd)
+   nu = sscanf(strrep(extractAfter(Rd.quantity(i), "deriv_"), "_", " "), '%d')';
+   v(i) = D.value(all(D.nu == nu, 2));
+end
+end
+
 function ok = cmp(name, a, b, verbose, tol)
 if nargin < 5, tol = 1e-10; end
 a = a(:); b = b(:);
 if numel(a) ~= numel(b), fprintf('%-24s size mismatch\n', name); ok = false; return; end
-e = max(abs(a - b)./max(abs(b), realmin));
+e = max(abs(a - b)./max(abs(b), max(1e-12*max(abs(b)), realmin)));   % relative, with a floor for components near zero
 ok = e <= tol;
 if verbose || ~ok, fprintf('%-24s max rel. diff %8.1e  %s\n', name, e, ifelse(ok, 'ok', 'FAILED')); end
 end

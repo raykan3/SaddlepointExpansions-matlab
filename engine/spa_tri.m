@@ -6,7 +6,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_tri(Kfun,x,order,opts)
 %   deterministic quadrature in double precision (opts.method = 'quad': Gauss-Hermite quadrature of
 %   the representation of Appendix B when all tau_j/sd(W_j) > 2.5, otherwise Gauss-Legendre
 %   quadrature of the orthant integral in conditioned coordinates), and by the recursion of
-%   Lemma 1 in variable precision ('vpa-recursion', formerly 'exact', or automatically with
+%   Lemma 2 in variable precision ('vpa-recursion', formerly 'exact', or automatically with
 %   opts.refine when a cancellation indicator exceeds 1e6 or a coefficient-error estimate
 %   exceeds 1e-10; Kfun must then accept vpa arguments; the base normal orthant probabilities of
 %   the recursion are still computed by quadrature).  For saddlepoints with negative components

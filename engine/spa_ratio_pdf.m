@@ -3,7 +3,7 @@ function pdf = spa_ratio_pdf(KWd,gd,shat,order)
 %   through the saddlepoint shat of K_W (K_W'(shat) = 0), to orders 1..order.
 %   KWd(k+1) = K_W^{(k)}(shat), k = 0..2*order;  gd(l+1) = g^{(l)}(shat), l = 0..2*order-2.
 %   For the density of R = Xbar/Ybar with Y > 0: K_W(s) = K(s,-r s), g(s) = K_2(s,-r s).
-%   Notation of Broda and Kan, "Saddlepoint expansions of arbitrary order", Section 5.2.
+%   Notation of Broda and Kan, "Uniform saddlepoint expansions", Section 5.2.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if ~(isscalar(order) && order >= 1 && order == round(order)), error('spa_ratio_pdf: order must be a positive integer'); end

@@ -5,7 +5,7 @@ function v = wishdiag_Kfun(nu,t,V,n)
 %   F_{nu-e_i}, A_i = V^{1/2} e_i e_i' V^{1/2}, D = (I - 2 sum_i t_i A_i)^{-1}.  NaN outside the
 %   domain.  Memoized: all derivatives with |nu| <= L are computed at the first call at a new
 %   (t,V,n), L = 2 when only derivatives of order at most two are requested, otherwise 16 or
-%   |nu|.  Used by tri_table (Table 7 of the paper).
+%   |nu|.  Used by tri_table (Table 8 of the paper).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 persistent lastt lastV lastn lastL D

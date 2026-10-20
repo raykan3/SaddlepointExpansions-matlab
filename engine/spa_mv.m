@@ -1,6 +1,6 @@
 function [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts)
 %SPA_MV Saddlepoint approximations of arbitrary order in any dimension d (Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order", Theorems 1 and 2), with n = 1.
+%   "Uniform saddlepoint expansions", Theorems 1 and 2), with n = 1.
 %   [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts)
 %   Kfun(nu,t): derivative of order nu (1 x d nonnegative integers) of the cgf K at t (1 x d);
 %               nu = zeros(1,d) gives K(t); NaN outside the domain of K.  For the variable-
@@ -55,7 +55,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts)
 %                        nshift random shifts of nqmc points) after Genz's sequential conditioning
 %                        of the normal vector truncated to the orthant; err is the standard error
 %                        over the shifts;
-%               'vpa-recursion': binomial sum (14) and recursion of Lemma 1 in variable
+%               'vpa-recursion': binomial sum (14) and recursion of Lemma 2 in variable
 %                        precision (current digits; x and the derivatives must be vpa); the
 %                        bivariate and trivariate normal orthant probabilities that start the
 %                        recursion are computed by Gauss-Legendre quadrature (4 digits nodes,
@@ -91,7 +91,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts)
 %   (iV)^mu with W = T V).  The sums of the terms of a given order are unchanged in exact
 %   arithmetic, and the terms cancel much less when the components are strongly correlated under
 %   the tilted distribution, provided the whitened coefficients are formed accurately (see
-%   coef_err).  The method 'vpa-recursion' (Lemma 1) keeps the original coordinates, since the
+%   coef_err).  The method 'vpa-recursion' (Lemma 2) keeps the original coordinates, since the
 %   recursion is tied to the orthant.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
@@ -187,7 +187,7 @@ if isa(x,'sym'), fsel = prod(factorial(sym(A(sel,:))),2); else, fsel = prod(fact
 theta0 = zeros(nN,1,'like',x); theta0(sel) = Kd(sel)./fsel;
 isd = ~isa(x,'sym');                                    % coefficient-error estimate in double only
 if strcmp(meth,'vpa-recursion')
-   theta = theta0;                                      % Lemma 1 works in the original coordinates
+   theta = theta0;                                      % Lemma 2 works in the original coordinates
    if isd, dth = 2*eps*abs(theta0); end
 elseif ~isempty(opts.Kwhite)
    theta = zeros(nN,1,'like',x);
@@ -667,7 +667,7 @@ end
 
 function Inu = Iexact3(S,tau,AL,L,fac)
 %  d = 3, variable precision: I(nu) = sum_{rho <= nu} binom(nu,rho)(-tau)^(nu-rho) J(rho-1),
-%  with J from Lemma 1 (Jtable3), as three one-dimensional transforms; in the order of AL.
+%  with J from Lemma 2 (Jtable3), as three one-dimensional transforms; in the order of AL.
 %  fac scales the number of quadrature nodes of the base orthant probabilities (1, or 1/2 for
 %  the error estimate)
 Si = inv(S); t = (S*tau.').';
@@ -712,7 +712,7 @@ end
 end
 
 function Jm = Jtable3(L,S,Si,t,fac)
-%  Jm(r+2) = J(r) = prod_j (-D_j)^{r_j+1} Pbar(t,S), r_j >= -1, |r+1| <= L (Lemma 1)
+%  Jm(r+2) = J(r) = prod_j (-D_j)^{r_j+1} Pbar(t,S), r_j >= -1, |r+1| <= L (Lemma 2)
 Jm = vpa(zeros(L+1,L+1,L+1));
 He = hermite3(L,Si,t);
 phi3 = exp(-t*Si*t.'/2)/((2*vpa(pi))^(3/2)*sqrt(det(S)));

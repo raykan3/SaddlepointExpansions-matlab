@@ -11,7 +11,7 @@ function [pdf,Fup,canc] = spa_bi_hp(Kd,tau,x,order,G)
 %   Fup(M), M = 1..order: orthant probability, terms m <= 2M-1; requires tau >= 0 (NaN otherwise).
 %   canc(M): cancellation indicator (double), as in spa_bi.
 %   Unlike spa_bi, the integrals I(nu) are computed exactly from the binomial sum (14) and the
-%   recursion of Lemma 1, which are free of truncation error; the cancellation that makes them
+%   recursion of Lemma 2, which are free of truncation error; the cancellation that makes them
 %   inaccurate in double precision for large t and |nu| is harmless with enough digits.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
@@ -96,7 +96,7 @@ else
    end
 end
 %
-%  Orthant probability (Theorem 1), with I(nu) from (14) and Lemma 1
+%  Orthant probability (Theorem 1), with I(nu) from (14) and Lemma 2
 %
 Fup = vpa(nan(order,1)); canc = nan(order,1);
 if any(isAlways(tau < 0)), return; end
@@ -156,7 +156,7 @@ end
 
 function Jm = Jtable(L,S,Si,t)
 %  Jm(r1+2,r2+2) = J(r) = prod_j (-D_j)^{r_j+1} Pbar(t,S), r_j >= -1, r1+r2 <= L-2: phi(t,S)He_r(t,S)
-%  for r >= 0 and Lemma 1 for r with a component -1.
+%  for r >= 0 and Lemma 2 for r with a component -1.
 Jm = vpa(zeros(L+1,L+1));
 He = hermite2(L,Si,t);
 phi2 = exp(-t*Si*t.'/2)/(2*vpa(pi)*sqrt(det(S)));

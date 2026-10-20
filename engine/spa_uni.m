@@ -11,15 +11,15 @@ function [pdf,cdf,aij,upp,kappa] = spa_uni(Kd,shat,xbar,order,uthr)
 %            rounding; use upp for small upper tails);
 %   kappa(M): cancellation indicator of the cdf sum, (sum of |terms|)/|sum|; about
 %            log10(kappa) digits are lost to cancellation in double precision.
-%   The "n" is absorbed in K.  Notation of Broda and Kan, "Saddlepoint
-%   expansions of arbitrary order", Section 5.1.
+%   The "n" is absorbed in K.  Notation of Broda and Kan, "Uniform saddlepoint
+%   expansions", Section 5.1.
 %
 %   Evaluation of the integrals I_m(u), u = shat*sqrt(K''(shat)): for |u| <= uthr (default
-%   2.5) by the forward recursion (36) of the paper, which is accurate there; for |u| > uthr
+%   2.5) by the forward recursion (39) of the paper, which is accurate there; for |u| > uthr
 %   from the representation, for u > 0,
 %      I_{2k}(u)/phi(u) = (-1)^k u M_k(u),  I_{2k+1}(u)/phi(u) = (-1)^k M_{k+1}(u),
 %      M_j(u) = E[Z^(2j)/(u^2+Z^2)],  Z ~ N(0,1),
-%   obtained by moving the contour of (35) to Re v = u, whose integrands are positive, by
+%   obtained by moving the contour of (38) to Re v = u, whose integrands are positive, by
 %   80-point Gauss-Hermite quadrature (relative error below 2e-15 for |u| > 2.5 and m <= 33).
 %   The forward recursion loses about log10(u^(2m+1)/m!) digits at index m for large |u|,
 %   because the I_m are its minimal solution.  For shat < 0 the integrals along the contour to

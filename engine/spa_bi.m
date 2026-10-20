@@ -1,6 +1,6 @@
 function [pdf,Fup,tau,canc,kappa,qerr,info] = spa_bi(Kfun,x,order,tau0,gamfun,nG,opts)
 %SPA_BI Bivariate saddlepoint approximations of arbitrary order (Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order", Sections 3-4), with n = 1.
+%   "Uniform saddlepoint expansions", Sections 3-4), with n = 1.
 %   [pdf,Fup,tau,canc,kappa,qerr,info] = spa_bi(Kfun,x,order,tau0,gamfun,nG,opts)
 %   Kfun(nu,t): derivative of order nu = [nu1 nu2] of the cgf K at t = [t1 t2]
 %               (nu = [0 0] gives K(t)); must return NaN outside the domain of K.

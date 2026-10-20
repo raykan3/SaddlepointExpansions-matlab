@@ -3,7 +3,8 @@
 Saddlepoint expansions of any order for tail probabilities and densities of random vectors,
 from the cumulant generating function alone. This is the MATLAB counterpart of the Julia package
 [SaddlepointExpansions.jl](https://github.com/s-broda/SaddlepointExpansions.jl) and implements the
-expansions of Broda and Kan: the orthant probability `P(X >= x)` of a random vector in any
+expansions of Broda and Kan, "Uniform saddlepoint expansions for multivariate tail
+probabilities": the orthant probability `P(X >= x)` of a random vector in any
 dimension, its density, and the joint density and distribution function of a vector of ratios
 `(X_1/Y_1, ..., X_d/Y_d)`, with the
 univariate expansions of Daniels and of Hauschildt and Robinson as the one-dimensional case. The
@@ -76,18 +77,22 @@ The full manual is `doc/manual.pdf`.
   `spa_orthant2`, `spa_orthant`, `spa_mv`, `spa_tri`, `spa_ratio_pdf`, `qf_Kmulti`, the
   noncentral chi-squared and F routines, ...), which take the derivatives from a function
   `Kfun(nu, t)` and can be used directly when closed-form derivatives are available;
-* `tests/test_spx.m`: checks against closed forms and against the Julia package
-  (`julia_reference.csv`, made by `julia_reference.jl`); every expansion agrees to about
-  `1e-13` relative; the expansions for several ratios, which the Julia package does not have,
-  are checked against closed forms;
+* `tests/test_spx.m`: checks against closed forms and against the 409 reference values shared
+  by the Julia and Python packages (`julia_reference.csv`, made by `julia_reference.jl` from
+  `test/reference_values.jl` of the Julia package); the expansions agree to about `1e-13`
+  relative (at most `1e-11`), and those for several ratios are also checked against closed forms;
 * `examples/demo_spx.m`: examples;
 * `doc/`: the manual (`manual.pdf`, source `manual.tex`).
 
-## Differences from the Julia package
+## Differences from the Julia and Python packages
 
-The computations are in double precision; the Julia package also runs in `BigFloat`. For
+The same expansions are in the Julia package
+[SaddlepointExpansions.jl](https://github.com/s-broda/SaddlepointExpansions.jl) and the Python
+package [saddlepoint-expansions](https://github.com/s-broda/saddlepoint-expansions). The MATLAB
+computations are in double precision; the Julia package also runs in `BigFloat`. For
 variable precision use the engine directly with a `Kfun` that accepts `vpa` arguments.
 
 ## License
 
-MIT; see `LICENSE`. Please cite Broda and Kan.
+MIT; see `LICENSE`. Please cite S. A. Broda and R. Kan, "Uniform saddlepoint expansions for
+multivariate tail probabilities".
