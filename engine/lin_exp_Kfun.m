@@ -5,7 +5,7 @@ function v = lin_exp_Kfun(nu,t,A,n,lin)
 %   a_i the rows of A (m x d).  nu: 1 x d multi-index; t: 1 x d; lin: 1 x d (default zero).
 %   Returns NaN outside the domain.  Used by wang_table and kl_table (Tables 3-6 of the paper).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 5, lin = zeros(size(t)); end
 k = sum(nu);
 z = 1-A*t(:)/n;

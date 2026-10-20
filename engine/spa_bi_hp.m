@@ -14,7 +14,7 @@ function [pdf,Fup,canc] = spa_bi_hp(Kd,tau,x,order,G)
 %   recursion of Lemma 1, which are free of truncation error; the cancellation that makes them
 %   inaccurate in double precision for large t and |nu| is harmless with enough digits.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 5, G = []; end
 x = vpa(x); tau = vpa(tau);
 p = 2*order-1;

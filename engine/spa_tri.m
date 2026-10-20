@@ -12,7 +12,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_tri(Kfun,x,order,opts)
 %   the recursion are still computed by quadrature).  For saddlepoints with negative components
 %   use spa_orthant, which applies the inclusion-exclusion (17).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 4, opts = struct(); end
 if numel(x) ~= 3, error('spa_tri: x must have three components'); end
 [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts);

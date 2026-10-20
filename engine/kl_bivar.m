@@ -12,7 +12,7 @@ function [P,part,info] = kl_bivar(Kfun,x,ord,hrel)
 %   result is dominated by rounding (Table 6 of the paper).  Requires the Statistics and Machine
 %   Learning Toolbox (mvncdf).  Used by kl_table.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 3, ord = [1 2]; end
 if nargin < 4, hrel = 1e-3; end
 if isequal(ord,[2 1])

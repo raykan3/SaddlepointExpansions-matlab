@@ -7,7 +7,7 @@ function v = wishdiag_Kfun(nu,t,V,n)
 %   (t,V,n), L = 2 when only derivatives of order at most two are requested, otherwise 16 or
 %   |nu|.  Used by tri_table (Table 7 of the paper).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 persistent lastt lastV lastn lastL D
 if sum(nu) <= 2, L = 2; else, L = max(16,sum(nu)); end
 if isempty(lastt) || ~isequal(t,lastt) || ~isequal(V,lastV) || n ~= lastn || L > lastL

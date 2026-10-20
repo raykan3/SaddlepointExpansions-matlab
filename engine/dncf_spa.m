@@ -7,7 +7,7 @@ function [cdf,pdf,upp,kappa] = dncf_spa(f,m,n,lam1,lam2,order)
 %   asymptotic error; the values are not clipped to [0,1]);
 %   pdf: Rice expansion of the density of R = Q1/Q2 at c, times m/n.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if ~(isscalar(f) && f > 0 && isfinite(f)), error('dncf_spa: f must be a positive scalar'); end
 if ~(isscalar(order) && order >= 1 && order == round(order)), error('dncf_spa: order must be a positive integer'); end
 if ~(lam1 >= 0 && lam2 >= 0 && m > 0 && n > 0), error('dncf_spa: invalid degrees of freedom or noncentralities'); end

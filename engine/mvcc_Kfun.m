@@ -4,7 +4,7 @@ function v = mvcc_Kfun(nu,t,m,lam)
 %   K(t) = sum_j K_j(t_j) + K_0(t_1 + ... + t_d).  NaN outside the domain.  Works in double
 %   precision and in variable precision (vpa t).  For d = 2 it is bqfcc_Kfun.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 d = numel(t);
 if any(double(1-2*t) <= 0) || double(1-2*sum(t)) <= 0, v = NaN; return; end
 k = sum(nu);

@@ -3,7 +3,7 @@ function [Fup,pdf] = mvcc_exact(x,m,lam)
 %   mvcc_Kfun) by one-dimensional integration over X_0 (relative tolerance 1e-12; the upper tails
 %   are computed directly).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 d = numel(x);
 opts = {'AbsTol',0,'RelTol',1e-12};
 f0 = @(s) ncx2pdf(s,m(d+1),lam(d+1));

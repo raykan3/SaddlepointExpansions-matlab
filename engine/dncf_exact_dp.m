@@ -9,7 +9,7 @@ function [cdf,upp,pdf] = dncf_exact_dp(f,m,n,lam1,lam2)
 %      P(j,k) = x^(a+j-1) y^(b+k-1)/B(a+j,b+k),  y = 1-x,
 %   which also give the pdf. Poisson weights below 1e-24 are omitted (omitted mass < 1e-21).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 c = m*f/n; x = c/(1+c); y = 1/(1+c); a = m/2; b = n/2; xy = x*y;
 [j,wj] = pois(lam1); [k,wk] = pois(lam2);
 aj = a + j; bk = b + k';                           % column, row

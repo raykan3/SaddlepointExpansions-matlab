@@ -13,7 +13,7 @@ function shat = dncf_saddle(c,m,n,lam1,lam2)
 %   step leaves it), which also repairs the cases in which the trigonometric formula loses
 %   accuracy or returns a root outside the domain.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 lo = -1/(2*c); hi = 1/2;
 a  = 8*c^2*(m+n);
 a2 = -4*c*(c*lam1+c*m+2*c*n-lam2-2*m-n)/a;

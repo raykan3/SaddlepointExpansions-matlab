@@ -94,7 +94,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts)
 %   coef_err).  The method 'vpa-recursion' (Lemma 1) keeps the original coordinates, since the
 %   recursion is tied to the orthant.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
-%   "Saddlepoint expansions of arbitrary order for multivariate distribution functions"; free to use and modify with a citation of the paper.
+%   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 4, opts = struct(); end
 def = struct('tau0',[],'method','auto','nG',64,'nGH',48,'nqmc',2^14,'nshift',8,'seed',1, ...
    'refine',true,'Kwhite',[],'qtol',[],'nGmax',[]);
