@@ -1,6 +1,6 @@
 function [f, info] = ratio_mv(K2, r, order)
 %RATIO_MV Saddlepoint expansion of the joint density of R_j = X_j/Y_j, j = 1..d (Theorem 4 and
-%   Corollary 1 of Broda and Kan), orders 1..order.
+%   Corollary 3 of Broda and Kan), orders 1..order.
 %   K2:  CGF of dimension 2d of (X_1..X_d, Y_1..Y_d), Y_j > 0;  r: the point (d values).
 %   With W = X - r.*Y, K_W(s) = K(s, -r.*s), K_W'(shat) = 0, K_W''(shat) = L L', the density is
 %      f(r) = (2 pi i)^(-d) int exp(K_W(s)) g(s) ds,  g = sum over the partitions pi of 1..d of

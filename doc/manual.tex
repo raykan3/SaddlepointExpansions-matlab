@@ -17,7 +17,7 @@
 \title{SaddlepointExpansions for MATLAB\\[4pt]
 \large User manual}
 \author{Simon A. Broda and Raymond Kan}
-\date{October 2026}
+\date{Version 0.2.2, November 2026}
 
 \begin{document}
 \sloppy
@@ -42,6 +42,10 @@ denominator;
 \item in one dimension, the expansions of Daniels (density), Hauschildt and Robinson (distribution
 function) and Rice (density of a ratio).
 \end{itemize}
+It also implements the expansions of Bao, Broda and Kan, ``Inversion formulas and saddlepoint
+expansions for Studentized means'', for the density, the distribution function and the quantiles of
+a Studentized mean $Q=X/\sqrt{Y}$ with $Y>0$, from the joint cumulant generating function of
+$(X,Y)$ (\S\,\ref{sec:stud}).
 The approximation of order $M$ has relative error $O(n^{-M})$, where $n$ is the large parameter (a
 sample size, a number of degrees of freedom).
 
@@ -59,9 +63,9 @@ version (\url{https://github.com/s-broda/saddlepoint-expansions}). The packages 
 interface and share a set of reference values, on which they agree to about $10^{-13}$ relative
 (\S\,\ref{sec:valid}); the Julia package also runs in variable precision (\S\,\ref{sec:precision}).
 
-Theorem and corollary numbers refer to the version of the paper of October 2026: Theorem~1
+Theorem and corollary numbers refer to the version of the paper of November 2026: Theorem~1
 (orthant probability), Theorem~2 (inclusion--exclusion), Theorem~3 (density), Theorem~4 and
-Corollary~1 (densities of ratios), Corollaries~2 to~5 (Daniels, Hauschildt--Robinson, the
+Corollary~3 (densities of ratios), Corollaries~1, 2, 4 and~5 (Daniels, Hauschildt--Robinson, the
 distribution function of a ratio, Rice).
 
 \paragraph{Requirements.} MATLAB (the package was tested with R2025b) and the
@@ -255,7 +259,7 @@ formula at such a saddlepoint would have the wrong exponential order. The saddle
 that of the original problem.
 
 \paragraph{Dimensions.} In one dimension the expansion is that of Hauschildt and Robinson
-(Corollary~3), computed directly for the upper tail. In two dimensions the integrals of the
+(Corollary~2), computed directly for the upper tail. In two dimensions the integrals of the
 expansion are computed by Gauss--Legendre quadrature (\prog{spa\_orthant2}, \prog{spa\_bi}), in
 three by Gauss quadrature on a conditioned grid (\prog{spa\_tri}), and in four or more by randomized
 quasi-Monte Carlo after Genz's sequential conditioning (\prog{spa\_mv}); \prog{r.info.err} is then an
@@ -276,7 +280,7 @@ See the help of \prog{spa\_bi}, \prog{spa\_tri} and \prog{spa\_mv}.
 r = density(K, x, 'order', M)
 \end{lstlisting}
 \prog{r.f} holds the approximations of orders $1,\ldots,M$ of the density of $X$ at $x$
-(Theorem~3; Daniels's expansion, Corollary~2, in one dimension). The expansion is a finite sum of
+(Theorem~3; Daniels's expansion, Corollary~1, in one dimension). The expansion is a finite sum of
 Hermite polynomials at zero and needs no integration in any dimension. In three or more dimensions
 the terms of high orders can cancel by many orders of magnitude; \prog{r.info.kappa\_pdf} reports
 the cancellation (\S\,\ref{sec:precision}).
@@ -297,7 +301,7 @@ r = ratio_tailprob(K, r0, 'order', M, 'signs', s)      % a mixed corner
 \end{lstlisting}
 \prog{r.f} or \prog{r.F} holds the approximations of orders $1,\ldots,M$, and \prog{r.shat} the
 saddlepoint of $K_W$ (\S\,\ref{sec:bgratio}). For one ratio the density is Rice's expansion
-(Corollary~5), and for several the expansion of Theorem~4 and Corollary~1, whose term of order one
+(Corollary~5), and for several the expansion of Theorem~4 and Corollary~3, whose term of order one
 is the approximation of Butler and Paolella (1998); the distribution function is the orthant
 probability of \S\,\ref{sec:tail} for $W=X-r_0\circ Y$ (Corollary~4 for one ratio), with all its
 options.
@@ -366,6 +370,73 @@ variables $(u,\tau)$ of \S\,\ref{sec:bgratio}, of degree $\max(2M,2M-2+d)$. For 
 ratios every order up to five takes one or two seconds, also for quadratic forms in $N=50$ variables;
 for four ratios order four takes several seconds. The distribution function costs what an orthant
 probability of dimension $d$ costs (\S\,\ref{sec:tail}).
+
+\section{Studentized means}\label{sec:stud}
+
+Let $Q=X/\sqrt{Y}$ with $Y>0$, and let \prog{K} be the joint cumulant generating function of $(X,Y)$,
+of dimension two (numerator first). The expansions of Bao, Broda and Kan are
+\begin{lstlisting}
+r = studentized_density(K, q, 'order', M)                  % density of Q at q
+r = studentized_tailprob(K, q, 'order', M)                 % P(Q >= q)
+r = studentized_tailprob(K, q, 'order', M, 'lower', true)  % P(Q <= q)
+r = studentized_quantile(K, p, 'order', M)                 % the q with P(Q <= q) = p
+sd = studentized_saddlepoint(K, q)                         % sd.s, sd.t, sd.v, sd.q0
+loc = studentized_locus(K, s, tguess)                      % loc.t, loc.v, loc.q
+\end{lstlisting}
+Unlike a ratio, $X-q\sqrt Y$ is not linear in $(X,Y)$, and the inversion formula is a double
+integral. Its saddlepoint $(\hat s,\hat t,\hat v)$ solves
+\[
+K_s(s,t)=qv,\qquad K_t(s,t)=v^2,\qquad qs+2tv=0,
+\]
+with $\hat v>0$; \prog{studentized\_saddlepoint} finds it by Newton's method with continuation in $q$
+from $q_0=E(X)/E(Y)^{1/2}$, where $\hat s=\hat t=0$. The density is the amplitude expansion of the
+double integral about the saddlepoint, and the distribution function an expansion of
+Hauschildt--Robinson type in $s$ after the $t$-integral is expanded by Laplace's method
+(\S\,\ref{sec:bgstud}). \prog{r.f(M)} keeps the terms of the density of orders $n^{-m}$, $m\leq M-1$,
+and \prog{r.F(M)} those of the distribution function of orders $n^{-m/2}$, $m\leq 2M-1$, both with
+relative error $O(n^{-M})$; \prog{r.info.Fp(j+1)}, $j=0,\ldots,2M-1$, holds the distribution function
+with the terms up to $n^{-j/2}$. \prog{r.saddle} is the saddlepoint and \prog{r.info.kappa} the
+cancellation indicator. The option \prog{'saddle', sd} supplies a saddlepoint already computed. The
+expansions are not evaluated at $q=q_0$, where $\hat t=0$.
+
+The saddlepoints of all $q$ lie on the curve $sK_s+2tK_t=0$ through the origin, on which
+$v=K_t^{1/2}$ and $q=K_s/v$ (\prog{studentized\_locus}). \prog{studentized\_quantile} searches along
+this curve: each trial value of $\hat s$ gives its $q$ and its distribution function directly, so that
+no saddlepoint equation is solved for a trial $q$ (a bracket in $\hat s$ from the origin, then the
+Illinois iteration; \prog{'tol'}, default $10^{-10}$, is the tolerance on the probability).
+
+\paragraph{Example: the noncentral $t$ distribution.} With $X\sim N(\mu,1)$ and
+$Y\sim\chi^2_\nu/\nu$ independent and $n$ pairs, $\bar X/\sqrt{\bar Y}=T/\sqrt n$, $T$ noncentral $t$
+with $n\nu$ degrees of freedom and noncentrality $\sqrt n\mu$:
+\begin{lstlisting}
+mu = 1; nu = 3; n = 16;
+K = sample_mean(CGF(@(t) mu*t(1) + t(1)^2/2 - nu/2*log(1 - 2*t(2)/nu), 2, ...
+                    'domain', @(t) t(2) < nu/2), n);
+studentized_tailprob(K, 6/sqrt(n), 'order', 3, 'lower', true).F'   % P(T <= 6)
+%   0.9539837462   0.9539799842   0.9539798477    (exact 0.9539798478)
+studentized_density(K, 6/sqrt(n), 'order', 3).f'/sqrt(n)           % density of T at 6
+%   0.0757466061   0.0753761567   0.0753767005    (exact 0.0753767236)
+studentized_quantile(K, 0.05, 'order', 3).q*sqrt(n)   % 2.32153317, the exact value
+\end{lstlisting}
+
+\paragraph{Example: the Dickey--Fuller $t$-ratio.} \prog{tests/dickey\_fuller\_cgf.m} gives the joint
+cumulant generating function of $(U,V)$ whose ratio $U/\sqrt V$ is the limiting Dickey--Fuller
+$t$-ratio without deterministic terms (model 1), with a constant (model 2) or with a constant and a
+trend (model 3), under the unit root ($c=0$) and local alternatives ($c<0$), from Nabeya and Tanaka
+(1990) and Nabeya and S{\o}rensen (1994). For model 2 at the $5\%$ critical value,
+\begin{lstlisting}
+K = dickey_fuller_cgf(2);
+r = studentized_tailprob(K, -2.862, 'order', 3, 'lower', true);  r.info.Fp'
+%   0.0475  0.0520  0.0484  0.0449  0.0453  0.0496
+studentized_quantile(K, 0.05, 'order', 3).q                     % -2.85930
+\end{lstlisting}
+(the exact quantile of the limit is $-2.861569$). It is a test fixture, not part of the package.
+
+\paragraph{Precision.} Where $|\hat t|$ is large the terms of high order of the density cancel by
+many orders of magnitude; \prog{r.status} is \prog{'coefficients inaccurate'} when the indicator
+exceeds $10^{10}$ (for the Dickey--Fuller model 2 above, at order four). The Julia package repeats
+the computation in \prog{BigFloat} when the indicator exceeds $10^6$; this package, like the Python
+one, works in double precision. The distribution function is much less affected.
 
 \section{Derivatives, saddlepoints and the Taylor class}\label{sec:tps}
 
@@ -482,6 +553,28 @@ in $(u,\tau)$: the coefficient of $\prod_{j\in B}\tau_j$ is the Taylor polynomia
 The sums $b_m$ are evaluated as $\He$-weighted sums of the coefficients of the products
 $\Theta(u)^r\,h(u)/r!$.
 
+\subsection{Studentized means}\label{sec:bgstud}
+
+For $Q=X/\sqrt Y$ the inversion formulas of Bao, Broda and Kan are double integrals,
+\[
+f_Q(q)=\frac{1}{(2\pi i)^2}\iint e^{K(s,t)}\,2J_2(qs,t)\,dt\,ds,\qquad
+\pr(Q>q)=\frac{1}{(2\pi i)^2}\iint e^{K(s,t)}\,2J_1(qs,t)\,dt\,\frac{ds}{s},
+\]
+with the kernels $J_k(b,t)=\int_0^\infty v^ke^{-bv-tv^2}\,dv$, whose exponent is $q^2s^2/(4t)$ plus
+Gaussian terms. With $\psi(s,t)=K(s,t)+q^2s^2/(4t)$ the density is
+\[
+f_Q(q)\approx\frac{\hat v^2e^{\psi(\hat s,\hat t)}}{\sqrt{\pi}\,\{\hat t\,|\psi''(\hat s,\hat t)|\}^{1/2}}
+\Bigl\{1+\sum_{m=1}^{M-1}\bigl(b_m(h_0)+b_{m-1}(h_1)\bigr)\Bigr\},
+\]
+the amplitude expansion of \S\,\ref{sec:bgratio} in two variables with the amplitudes
+$h_0=(s/\hat s)^2(t/\hat t)^{-5/2}$ and $h_1=(t/\hat t)^{-3/2}/(2\hat t\hat v^2)$; the Hessian
+$\psi''$ is indefinite where $\hat t<0$, and the Hermite moments are evaluated in the coordinates of
+a complex factorization $\psi''=LL\tp$. For the distribution function the $t$-integral is expanded by
+Laplace's method, which leaves a univariate integral of Hauschildt--Robinson type in $s$ with the
+exponent $\Psi(s)=\psi(s,t(s))$, $\psi_t(s,t(s))=0$, and amplitudes $H_k(s)$; the Taylor coefficients
+of $\Psi$ and of the $H_k$ at $\hat s$ are obtained from the Taylor polynomial of $K$ at
+$(\hat s,\hat t)$ by Newton's method and composition on power series, exact up to rounding.
+
 \section{Accuracy and precision}\label{sec:precision}
 
 The computations are in double precision. Rounding errors are about $10^{-14}$ relative in the
@@ -494,6 +587,8 @@ cancellation exceeds $10^6$, tries to repeat the computation in variable precisi
 works in double precision only, so in this package that refinement is not possible: the
 double-precision values are kept and \prog{status} reports \prog{'refinement failed'}. The Julia
 package repeats the computation in \prog{BigFloat}.
+\item \emph{Studentized means.} The density of a Studentized mean can cancel strongly where the
+saddlepoint has large $|\hat t|$ (\S\,\ref{sec:stud}); \prog{status} reports it.
 \item \emph{Probabilities below about $10^{-308}$.} In two dimensions use \prog{'logscale'}
 (\S\,\ref{sec:tail}).
 \item \emph{Tables of very small relative errors}, at large $n$ and high order, need exact values and
@@ -543,7 +638,15 @@ $10^{-13}$ relative, at most $10^{-11}$; the four-dimensional orthant probabilit
 quasi-Monte Carlo, agree within three standard errors;
 \item the expansion for several ratios at $d=1$ against Rice's expansion ($10^{-14}$), and for two and
 three ratios against the inverted Dirichlet density and distribution function and the product of
-two independent beta-prime ratios, including the rate $O(n^{-4})$ of the density of order four.
+two independent beta-prime ratios, including the rate $O(n^{-4})$ of the density of order four;
+\item the tests of the Studentized-mean functions of the Julia and Python packages: the noncentral
+$t$ distribution against exact values (distribution function to $2\times10^{-9}$ at order three,
+density to $10^{-6}$, the quantile and the saddlepoint locus), and the Dickey--Fuller $t$-ratio
+against the reference values of Bao, Broda and Kan (the distribution function with every half-order
+to $10^{-8}$, the density to $2\times10^{-6}$, a saddlepoint and a probability under a local
+alternative, and the $5\%$ quantile of model 2). The values agree with those of the Python package
+\prog{saddlepoint-expansions} 0.2.2 to about $10^{-13}$ for the noncentral $t$ and to
+$10^{-11}$--$10^{-9}$ for the Dickey--Fuller model, whose derivatives of high order carry rounding errors.
 \end{itemize}
 In addition, for all 24 points of the table of sample autocorrelations of the paper, the density and
 distribution function of two ratios computed by the package agree with those of the dedicated
@@ -561,6 +664,10 @@ call & result\\
 \prog{r = density(K, x, 'order', M, ...)} & densities; \prog{r.f}, \prog{r.tau}, \prog{r.status}, \prog{r.info}\\
 \prog{r = ratio\_density(K, r0, 'order', M)} & densities of $d=$ \prog{numel(r0)} ratios; \prog{r.f}, \prog{r.shat}, \prog{r.info} (for $d\geq2$: the terms \prog{a}, the log prefactor \prog{logC})\\
 \prog{r = ratio\_tailprob(K, r0, 'order', M, 'lower', tf, 'signs', s, ...)} & distribution functions of ratios; \prog{r.F}, \prog{r.shat}, \prog{r.status}, \prog{r.info}\\
+\prog{r = studentized\_density(K, q, 'order', M, 'saddle', sd)} & density of $X/\sqrt Y$; \prog{r.f}, \prog{r.saddle}, \prog{r.status}, \prog{r.info}\\
+\prog{r = studentized\_tailprob(K, q, 'order', M, 'lower', tf, 'saddle', sd)} & distribution function of $X/\sqrt Y$; \prog{r.F}, \prog{r.saddle}, \prog{r.status}, \prog{r.info.Fp}, \prog{r.info.kappa}\\
+\prog{r = studentized\_quantile(K, p, 'order', M, 'tol', tol)} & quantile of the expansion; \prog{r.q}, \prog{r.saddle}\\
+\prog{sd = studentized\_saddlepoint(K, q)}, \prog{studentized\_locus(K, s, tguess)} & the saddlepoint and the saddlepoint locus\\
 \prog{[tau, info] = saddlepoint(K, x)} & the saddlepoint\\
 \prog{D = derivatives(K, t, N)} & \prog{D.nu}, \prog{D.value}\\
 \prog{p = taylor(K, t, N, M)} & Taylor polynomial of $K(t+Mv)$\\
@@ -574,6 +681,8 @@ call & result\\
 
 \section*{References}
 \begin{description}\setlength{\itemsep}{2pt}
+\item Bao, Y., Broda, S. A. and Kan, R. Inversion formulas and saddlepoint expansions for
+Studentized means. Working paper, 2026.
 \item Broda, S. A. and Kan, R. Uniform saddlepoint expansions for multivariate tail probabilities.
 Working paper, 2026.
 \item Butler, R. W. (2007). \emph{Saddlepoint Approximations with Applications}. Cambridge
@@ -588,6 +697,11 @@ University of British Columbia, Vancouver.
 Statist.} 31, 274--286.
 \item Kolassa, J. E. and Li, J. (2010). Multivariate saddlepoint approximations in tail probability and
 conditional inference. \emph{Bernoulli} 16, 1191--1207.
+\item Nabeya, S. and S{\o}rensen, B. E. (1994). Asymptotic distributions of the least-squares
+estimators and test statistics in the near unit root model with non-zero initial value and local
+drift and trend. \emph{Econometric Theory} 10, 937--966.
+\item Nabeya, S. and Tanaka, K. (1990). A general approach to the limiting distribution for estimators
+in time series regression with nonstable autoregressive errors. \emph{Econometrica} 58, 145--163.
 \end{description}
 
 \end{document}

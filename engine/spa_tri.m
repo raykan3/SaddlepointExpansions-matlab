@@ -4,7 +4,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_tri(Kfun,x,order,opts)
 %   [pdf,Fup,tau,kappa,err,info] = spa_tri(Kfun,x,order,opts)
 %   Same inputs and outputs as spa_mv (x is 1 x 3).  The integrals I(nu) are computed by
 %   deterministic quadrature in double precision (opts.method = 'quad': Gauss-Hermite quadrature of
-%   the representation of Appendix B when all tau_j/sd(W_j) > 2.5, otherwise Gauss-Legendre
+%   the representation of Appendix C when all tau_j/sd(W_j) > 2.5, otherwise Gauss-Legendre
 %   quadrature of the orthant integral in conditioned coordinates), and by the recursion of
 %   Lemma 2 in variable precision ('vpa-recursion', formerly 'exact', or automatically with
 %   opts.refine when a cancellation indicator exceeds 1e6 or a coefficient-error estimate

@@ -1,7 +1,7 @@
 function [pdf,Fup,canc] = spa_bi_hp(Kd,tau,x,order,G)
 %SPA_BI_HP Variable-precision version of spa_bi (Symbolic Math Toolbox): bivariate saddlepoint
 %   approximations of orders 1..order of the density and of the orthant probability
-%   P[X1 >= x1, X2 >= x2] (Sections 3-4 of the paper), computed with the current digits().
+%   P[X1 >= x1, X2 >= x2] (Section 3 and Appendix A.1 of the paper), computed with the current digits().
 %   [pdf,Fup,canc] = spa_bi_hp(Kd,tau,x,order,G)
 %   Kd:    vpa array, Kd(n1+1,n2+1) = K^{(n1,n2)}(tau), n1+n2 <= 2*order+1, Kd(1,1) = K(tau).
 %   tau:   the saddlepoint (vpa 1x2), K'(tau) = x;  x: the point (1x2).

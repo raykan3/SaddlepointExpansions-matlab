@@ -6,9 +6,9 @@ function [pdf,Fup,tau,canc,kappa,qerr,info] = spa_bi(Kfun,x,order,tau0,gamfun,nG
 %               (nu = [0 0] gives K(t)); must return NaN outside the domain of K.
 %   x:          the point [x1 x2];  tau0: starting value for the saddlepoint (default [0 0]).
 %   gamfun:     optional.  gamfun(tau) returns a cell array {G0,G1} of Taylor coefficients
-%               at tau of the amplitude functions g_0, g_1 of a pair of ratios (Section 4),
+%               at tau of the amplitude functions g_0, g_1 of a pair of ratios (Appendix A.1),
 %               G_k(mu1+1,mu2+1) = coefficient gamma_mu of t^mu in g_k(tau+t), which enters
-%               b_j(g_k) of Corollary 1, |mu| <= 2(order-1); pdf is then the
+%               b_j(g_k) of Corollary 3, |mu| <= 2(order-1); pdf is then the
 %               density of the pair of ratios (x should be [0 0]).
 %   pdf(M), M = 1..order: density expansion with terms m <= M-1 (relative error O(n^-M)).
 %   Fup(M), M = 1..order: P[X1 >= x1, X2 >= x2] with terms m <= 2M-1 (relative error O(n^-M)),
@@ -47,7 +47,7 @@ function [pdf,Fup,tau,canc,kappa,qerr,info] = spa_bi(Kfun,x,order,tau0,gamfun,nG
 %               whitened variable (otherwise substitution).
 %               opts.direct = true evaluates the orthant expansion also when tau has negative
 %               components, by the orthant-integral form of I(nu) (the analytic continuation of
-%               the formula; this is the "direct" evaluation of Section 3.3 and Table 5, which
+%               the formula; this is the "direct" evaluation of Section 3.3 and Table S6, which
 %               has the wrong exponent; use spa_orthant2 for the probability itself).
 %               opts.logscale = c returns Fup scaled by exp(-c), for probabilities beyond the
 %               range of double precision (default 0).
@@ -68,7 +68,7 @@ function [pdf,Fup,tau,canc,kappa,qerr,info] = spa_bi(Kfun,x,order,tau0,gamfun,nG
 %   The sums of the terms of a given order are the same in exact arithmetic; the terms are not,
 %   and in the whitened form they cancel much less when the components of X are strongly
 %   correlated under the tilted distribution (Section 5 of the paper on conditional
-%   expansions, and Appendix B of this paper), provided the whitened coefficients are formed
+%   expansions, and Appendix C of this paper), provided the whitened coefficients are formed
 %   accurately (directly by opts.Kwhite, or by substitution when info.coef_err_* is small).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
@@ -170,7 +170,7 @@ if isempty(gamfun)
       pdf(M) = f0*s; info.coef_err_pdf(M) = max(abs(ds))/abs(s);
    end
 else
-   % density of a pair of ratios (Corollary 1): coefficient of n^-m = sum_{k<=min(m,1)} b_{m-k}(g_k),
+   % density of a pair of ratios (Corollary 3): coefficient of n^-m = sum_{k<=min(m,1)} b_{m-k}(g_k),
    %    b_j(g_k) = sum_r sum_{|nu|+|mu|=2(j+r)} a_{r,nu} gamma_mu He_{nu+mu}(0,I), gamma_mu the
    %    Taylor coefficients of g_k, a_{0,0} = 1, in the whitened variable
    if isempty(opts.gamwhite)

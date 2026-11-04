@@ -3,7 +3,7 @@ function v = lin_exp_Kfun(nu,t,A,n,lin)
 %   independent copies of A'U + lin, U a vector of independent unit exponential variables:
 %      K(t) = n sum_i [-log(1 - a_i't/n)] + lin't,
 %   a_i the rows of A (m x d).  nu: 1 x d multi-index; t: 1 x d; lin: 1 x d (default zero).
-%   Returns NaN outside the domain.  Used by wang_table and kl_table (Tables 1-6 of the paper).
+%   Returns NaN outside the domain.  Used by wang_table and kl_table (Tables 1 and 2 of the paper and S4 to S7 of the Supplementary Material).
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.
 if nargin < 5, lin = zeros(size(t)); end

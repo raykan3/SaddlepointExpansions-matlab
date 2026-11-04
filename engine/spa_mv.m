@@ -43,7 +43,7 @@ function [pdf,Fup,tau,kappa,err,info] = spa_mv(Kfun,x,order,opts)
 %               'vpa-recursion' (d = 3, variable precision; the older name 'exact' is accepted)
 %               for the integrals I(nu):
 %               'quad':  for u_j = tau_j/sd(W_j) > 2.5 for all j, W ~ N(0,Sigma^{-1}), the
-%                        representation of Appendix B by nGH^3 Gauss-Hermite nodes; otherwise
+%                        representation of Appendix C by nGH^3 Gauss-Hermite nodes; otherwise
 %                        Gauss-Legendre quadrature of the orthant-integral form with nG nodes per
 %                        coordinate in conditioned coordinates, the ranges split at the boundary
 %                        layers that the truncation creates for correlations near +-1 and at

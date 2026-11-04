@@ -9,7 +9,7 @@ function [P,part,info] = kl_bivar(Kfun,x,ord,hrel)
 %   nested signed root is computed by central differences with step hrel*max(1,|tau1|) (default
 %   hrel = 1e-3).  The formula has removable singularities on the lines tau1 = 0 and
 %   x2 = E(X2); this routine evaluates it directly in double precision, and near those lines the
-%   result is dominated by rounding (Table 6 of the paper).  Requires the Statistics and Machine
+%   result is dominated by rounding (Table S7 of the Supplementary Material).  Requires the Statistics and Machine
 %   Learning Toolbox (mvncdf).  Used by kl_table.
 %   Raymond Kan (raymond.kan@rotman.utoronto.ca), 2026. Programs accompanying Broda and Kan,
 %   "Uniform saddlepoint expansions for multivariate tail probabilities"; free to use and modify with a citation of the paper.

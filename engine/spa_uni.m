@@ -12,10 +12,10 @@ function [pdf,cdf,aij,upp,kappa] = spa_uni(Kd,shat,xbar,order,uthr)
 %   kappa(M): cancellation indicator of the cdf sum, (sum of |terms|)/|sum|; about
 %            log10(kappa) digits are lost to cancellation in double precision.
 %   The "n" is absorbed in K.  Notation of Broda and Kan, "Uniform saddlepoint
-%   expansions", Section 5.1.
+%   expansions", Section 4.
 %
 %   Evaluation of the integrals I_m(u), u = shat*sqrt(K''(shat)): for |u| <= uthr (default
-%   2.5) by the forward recursion (39) of the paper, which is accurate there; for |u| > uthr
+%   2.5) by the forward recursion (35) of the paper, which is accurate there; for |u| > uthr
 %   from the representation, for u > 0,
 %      I_{2k}(u)/phi(u) = (-1)^k u M_k(u),  I_{2k+1}(u)/phi(u) = (-1)^k M_{k+1}(u),
 %      M_j(u) = E[Z^(2j)/(u^2+Z^2)],  Z ~ N(0,1),

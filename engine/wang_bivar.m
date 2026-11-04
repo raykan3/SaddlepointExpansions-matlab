@@ -12,7 +12,7 @@ function [F,part,info] = wang_bivar(Kfun,x,ord)
 %   is zero up to rounding, |tau_j| K_jj^(1/2) < 1e-8 (where Wang takes limits).  The term (18) contains phi(vbar0) with
 %   vbar0^2 = -2{K(0,tau2) - tau2 x2} (his Lemma 4), which can be negative; it is evaluated
 %   through exp{K(0,tau2) - tau2 x2}/sqrt(2 pi), which is what his derivation produces and equals
-%   phi(vbar0) when vbar0^2 >= 0, and info.vbar2 reports vbar0^2 (Table 7 of the paper).
+%   phi(vbar0) when vbar0^2 >= 0, and info.vbar2 reports vbar0^2 (Table 3 of the paper).
 %   info: tau, th1 (marginal saddlepoint of X1), x1, wu0, v0, b, y1, rho1, G, vbar2.
 %   Checked against the values printed in Wang (1990, Table 1) by wang_check.m.  MATLAB port of
 %   wang_bivar of the Julia programs.  Requires the Statistics and Machine Learning Toolbox

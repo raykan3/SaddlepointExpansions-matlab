@@ -10,13 +10,13 @@ fprintf('P(X1 >= 3, X2 >= 3), orders 1-4: %s  (exact 0.02215196)\n', sprintf('%.
 r = density(Kn, [3 3], 'order', 4);
 fprintf('density, orders 1-4:             %s\n', sprintf('%.8f ', r.f));
 
-%% 2. Table 1 of the paper, a pair of quadratic forms with a common component
+%% 2. Table 6 of the paper, a pair of quadratic forms with a common component
 % Q1 = X0 + X1, Q2 = X0 + X2, X_i ~ chi^2_{m_i}(lambda_i), (m0,m1,m2) = (10,15,20), (lambda0,lambda1,lambda2) = (8,5,10)
 Kc = common_component_cgf([15 20 10], [5 10 8]);
 x = [48.09950493836207795336339, 65.23368793961408597955183];   % E(Q) + (1.0, 1.5) sd(Q)
 Fex = 0.0346756412725677484298474; fex = 0.0003658729471762786026251736;   % exact (25 digits)
 r = tailprob(Kc, x, 'order', 5); s = density(Kc, x, 'order', 5);
-fprintf('Table 1, (c1,c2) = (1.0,1.5): relative errors of the orthant probability %s\n', sprintf('%9.1e', r.F/Fex - 1));
+fprintf('Table 6, (c1,c2) = (1.0,1.5): relative errors of the orthant probability %s\n', sprintf('%9.1e', r.F/Fex - 1));
 fprintf('                              relative errors of the density             %s\n', sprintf('%9.1e', s.f/fex - 1));
 
 %% 3. A trivariate mean with a saddlepoint with negative components (inclusion-exclusion)
@@ -36,7 +36,7 @@ Ku = uniform_cgf();                           % uniform on [-1, 1]: K(t) = log(s
 D = derivatives(Ku, 0, 8);
 fprintf('cumulants of the uniform distribution on [-1,1]: %s\n', mat2str(D.value(2:end)', 6));
 
-%% 6. Two sample autocorrelations (Section 6 of the paper): R_j = z'MA_jMz/z'Mz, j = 1, 2,
+%% 6. Two sample autocorrelations (Section S4 of the Supplementary Material): R_j = z'MA_jMz/z'Mz, j = 1, 2,
 % z ~ N(0, I_50), M = I - 11'/50, (A_j)_ts = 1/2 for |t - s| = j; a common denominator, so K is the
 % joint cgf of the three quadratic forms (dimension d + 1 = 3)
 N = 50; Mc = eye(N) - ones(N)/N; Aj = @(j) (diag(ones(N-j, 1), j) + diag(ones(N-j, 1), -j))/2;
@@ -53,3 +53,16 @@ Kd = CGF(@(t) -sum(a(:).*log(1 - t(1:3))) - b*log(1 - t(4)), 4, 'domain', @(t) a
 fex = exp(gammaln(sum(a) + b) - sum(gammaln(a)) - gammaln(b))*prod(r0.^(a - 1))*(1 + sum(r0))^(-(sum(a) + b));
 f = ratio_density(Kd, r0, 'order', 5).f;
 fprintf('three ratios: relative errors of the density, orders 1-5: %s\n', sprintf('%9.1e', f/fex - 1));
+
+%% 8. A Studentized mean (Bao, Broda and Kan): the noncentral t distribution
+% X ~ N(mu, 1), Y ~ chi^2_nu/nu independent, n pairs: Xbar/sqrt(Ybar) = T/sqrt(n), T noncentral t with
+% n*nu degrees of freedom and noncentrality sqrt(n)*mu
+mu = 1; nu = 3; n = 16;
+Kt = sample_mean(CGF(@(t) mu*t(1) + t(1)^2/2 - nu/2*log(1 - 2*t(2)/nu), 2, 'domain', @(t) t(2) < nu/2), n);
+x = 6;                                            % P(T <= 6) = P(Xbar/sqrt(Ybar) <= 6/sqrt(n))
+F = studentized_tailprob(Kt, x/sqrt(n), 'order', 3, 'lower', true).F;
+f = studentized_density(Kt, x/sqrt(n), 'order', 3).f/sqrt(n);
+fprintf('noncentral t: P(T <= %g), orders 1-3: %s (exact %.10f)\n', x, sprintf('%.10f ', F), nctcdf(x, n*nu, sqrt(n)*mu));
+fprintf('              density, orders 1-3:  %s (exact %.10f)\n', sprintf('%.10f ', f), nctpdf(x, n*nu, sqrt(n)*mu));
+Q = studentized_quantile(Kt, 0.05, 'order', 3);
+fprintf('              5%% quantile of T, order 3: %.8f (exact %.8f)\n', Q.q*sqrt(n), nctinv(0.05, n*nu, sqrt(n)*mu));

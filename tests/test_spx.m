@@ -4,7 +4,7 @@ function ok = test_spx(verbose)
 %   largest relative difference of each case.
 if nargin < 1, verbose = true; end
 here = fileparts(mfilename('fullpath'));
-addpath(fullfile(here, '..'), fullfile(here, '..', 'engine'));
+addpath(fullfile(here, '..'), fullfile(here, '..', 'engine'), here);
 ok = true;
 %% derivatives of the Taylor class against closed forms
 v = tps.vars(2, 6);
@@ -179,7 +179,61 @@ ok = cmp('ratio2 F', ratio_tailprob(Kg4, [0.7 0.9], 'order', 5).F, get("ratio2",
 Kg3 = CGF(@(t) -3*log(1 - t(1)) - 4*log(1 - t(2)) - 5*log(1 - t(3)), 3, 'domain', @(t) all(t < 1));
 ok = cmp('ratio2 common', ratio_density(Kg3, [0.5 0.8], 'order', 4).f, get("ratio2", "f_common"), verbose) && ok;
 ok = cmp('ratio2 general d=1', ratio_density(Kq, 1.2, 'order', 4, 'general', true).f, get("ratio2", "f_qf_general"), verbose) && ok;
+%% Studentized means Q = X/sqrt(Y) (Bao, Broda and Kan): the tests of the Julia and Python packages
+ok = test_studentized(verbose) && ok;
 if ok, fprintf('all tests passed\n'); else, fprintf('SOME TESTS FAILED\n'); end
+end
+
+function ok = test_studentized(verbose)
+ok = true;
+% noncentral t: X ~ N(mu, 1), Y ~ chi2_nu/nu independent, n pairs; Xbar/sqrt(Ybar) = T/sqrt(n)
+mu = 1; nu = 3; n = 16;
+K1 = CGF(@(t) mu*t(1) + t(1)^2/2 - nu/2*log(1 - 2*t(2)/nu), 2, 'domain', @(t) t(2) < nu/2);
+Kn = sample_mean(K1, n);
+k = n*nu/2; th = 2/(n*nu);
+logg = @(y) (k - 1)*log(y) - y/th - gammaln(k) - k*log(th);
+exactF = @(q) integral(@(y) exp(logg(y)).*normcdf(sqrt(n)*(q*sqrt(y) - mu)), 0, Inf, 'RelTol', 1e-12, 'AbsTol', 0);
+exactf = @(q) integral(@(y) exp(logg(y)).*sqrt(n*y).*exp(-n*(q*sqrt(y) - mu).^2/2)/sqrt(2*pi), 0, Inf, 'RelTol', 1e-12, 'AbsTol', 0);
+for q = [0.5 1.5 2.5]
+   sd = studentized_saddlepoint(Kn, q);
+   ok = check(sprintf('stud. saddle q=%.1f', q), double(sd.v > 0 && (q > sd.q0) == (sd.s > 0)), 1, 0, verbose) && ok;
+   r = studentized_tailprob(Kn, q, 'order', 3, 'lower', true); ex = exactF(q);
+   ok = check(sprintf('stud. F q=%.1f', q), r.F(end), ex, 2e-9/ex, verbose) && strcmp(r.status, 'ok') && ok;
+   ok = check(sprintf('stud. F gain q=%.1f', q), double(abs(r.info.Fp(end) - ex) < abs(r.info.Fp(1) - ex)/100), 1, 0, verbose) && ok;
+   ru = studentized_tailprob(Kn, q, 'order', 3);
+   ok = check(sprintf('stud. upper q=%.1f', q), ru.F(end), 1 - r.F(end), 1e-12, verbose) && ok;
+   d = studentized_density(Kn, q, 'order', 3); fex = exactf(q);
+   ok = check(sprintf('stud. f order 1 q=%.1f', q), d.f(1), fex, 1e-2, verbose) && ok;
+   ok = check(sprintf('stud. f order 3 q=%.1f', q), d.f(3), fex, 1e-6, verbose) && ok;
+end
+Q = studentized_quantile(Kn, 0.05, 'order', 3);
+ok = check('stud. quantile', studentized_tailprob(Kn, Q.q, 'order', 3, 'lower', true).F(end), 0.05, 1e-9/0.05, verbose) && ok;
+ok = check('stud. quantile exact', exactF(Q.q), 0.05, 1e-8/0.05, verbose) && ok;
+sd = studentized_saddlepoint(Kn, 1.5); loc = studentized_locus(Kn, sd.s, 0.9*sd.t);
+ok = check('stud. locus', [loc.t loc.v loc.q], [sd.t sd.v 1.5], 1e-12, verbose) && ok;
+% the Dickey-Fuller t-ratio: the reference values of the paper (the Julia and Python programs agree
+% on them to 1e-10) at the 5% asymptotic critical values (c = 0): distribution function with the
+% terms up to n^(-j/2), j = 0..5, and density with M = 1..4 terms
+ref = {{-1.941, [0.04131561, 0.04932910, 0.05021031, 0.05004336, 0.04996497, 0.04997437], [1.137468e-01, 1.145105e-01, 1.142462e-01, 1.143557e-01]}, ...
+       {-2.862, [0.04748127, 0.05196366, 0.04837446, 0.04492099, 0.04534934, 0.04962684], [1.288676e-01, 1.235403e-01, 1.262806e-01, 1.274765e-01]}, ...
+       {-3.411, [0.04466519, 0.04979224, 0.04990885, 0.04967211, 0.04978553, 0.04999147], [1.307302e-01, 1.305121e-01, 1.304833e-01, 1.306511e-01]}};
+for m = 1:3
+   q = ref{m}{1}; K = dickey_fuller_cgf(m);
+   r = studentized_tailprob(K, q, 'order', 3, 'lower', true);
+   ok = check(sprintf('Dickey-Fuller M%d F', m), r.info.Fp, ref{m}{2}, 1e-8/0.04, verbose) && ok;
+   d = studentized_density(K, q, 'order', 4);
+   ok = check(sprintf('Dickey-Fuller M%d f', m), d.f(1:3), ref{m}{3}(1:3), 2e-6, verbose) && ok;
+   ok = check(sprintf('Dickey-Fuller M%d f(4)', m), d.f(4), ref{m}{3}(4), 1e-3, verbose) && ok;
+   % the cancellation indicator reports where double precision runs out (M2 at order 4)
+   ok = check(sprintf('Dickey-Fuller M%d status', m), double(strcmp(d.status, 'coefficients inaccurate')), double(m == 2), 0, verbose) && ok;
+end
+K = dickey_fuller_cgf(3, 'c', -5);                     % the 0.75 quantile of M3 under c = -5
+r = studentized_tailprob(K, -2.025180818400757, 'order', 3, 'lower', true);
+ok = check('Dickey-Fuller c=-5 saddle', [r.saddle.s r.saddle.t], [2.391156286 10.320589682], 1e-8, verbose) && ok;
+ok = check('Dickey-Fuller c=-5 F', r.info.Fp(end), 0.739908646, 1e-8/0.74, verbose) && ok;
+Q = studentized_quantile(dickey_fuller_cgf(2), 0.05, 'order', 3);
+ok = check('Dickey-Fuller M2 quantile', Q.q, -2.859305, 1e-5/2.86, verbose) && ok;
+ok = check('Dickey-Fuller window', eval(dickey_fuller_cgf(2, 'c', -5), [0.3 11]), eval(dickey_fuller_cgf(2, 'c', -5, 'window', 1e-3), [0.3 11]), 1e-10, verbose) && ok;
 end
 
 function v = qfgeneric(t, B1, B2, nu)

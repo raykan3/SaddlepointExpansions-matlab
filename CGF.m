@@ -27,6 +27,12 @@ classdef CGF
 %                                            Y_j > 0 (Theorem 4); K of (X, Y) (dimension 2d) or
 %                                            of (X, Y) with a common denominator (d + 1); r.f(M)
 %      r = ratio_tailprob(K, r0, 'order', 3) P(R >= r0) ('lower', true: <=; 'signs', s); r.F(M)
+%   Studentized means Q = X/sqrt(Y), Y > 0, K the joint cgf of (X, Y) (dimension 2; Bao, Broda
+%   and Kan, "Inversion formulas and saddlepoint expansions for Studentized means"):
+%      r = studentized_density(K, q, 'order', 3)   density of Q at q; r.f(M)
+%      r = studentized_tailprob(K, q, 'order', 3)  P(Q >= q) ('lower', true: P(Q <= q)); r.F(M)
+%      r = studentized_quantile(K, p, 'order', 3)  the q with P(Q <= q) = p under the expansion
+%      sd = studentized_saddlepoint(K, q), studentized_locus(K, s, tguess)
 %      [tau, info] = saddlepoint(K, x)       the saddlepoint K'(tau) = x
 %      D = derivatives(K, t, N)              all derivatives of order <= N at t: D.nu, D.value
 %   Other name-value pairs of tailprob and density are passed to the engine (spa_orthant2,
@@ -117,7 +123,7 @@ methods
       %   r.status: 'ok' or a warning; r.info: diagnostics of the engine.  Other name-value
       %   pairs go to the engine: 'nG', 'qtol', 'nGmax', 'method' ('quad' or 'qmc'), 'nqmc',
       %   'nshift', 'seed', 'logscale' (d = 2); see spa_bi, spa_tri, spa_mv.
-      %   d = 1: Hauschildt-Robinson (Corollary 3); d = 2: spa_orthant2; d >= 3: spa_orthant.
+      %   d = 1: Hauschildt-Robinson (Corollary 2); d = 2: spa_orthant2; d >= 3: spa_orthant.
       [order, lower, signs, opts] = parseopts('tailprob', obj.d, varargin{:});
       x = reshape(x, 1, []);
       if numel(x) ~= obj.d, error('CGF:x', 'tailprob: x must have length %d', obj.d); end
@@ -144,7 +150,7 @@ methods
       end
    end
    function r = density(obj, x, varargin)
-      %DENSITY density of X at x by the expansion of Theorem 3 (Daniels, Corollary 2, for d = 1).
+      %DENSITY density of X at x by the expansion of Theorem 3 (Daniels, Corollary 1, for d = 1).
       %   r = density(K, x, 'order', M).  r.f(M): the approximation of order M (relative error
       %   O(n^-M)); r.tau: the saddlepoint; r.status; r.info (for d >= 3, kappa_pdf: the
       %   cancellation among the terms).  Other name-value pairs go to spa_bi or spa_mv.
@@ -175,7 +181,7 @@ methods
       %RATIO_DENSITY density of R = (X_1/Y_1, ..., X_d/Y_d) at r0 (d = numel(r0), Y_j > 0).
       %   K is the cgf of (X_1..X_d, Y_1..Y_d) (dimension 2d), or of (X_1..X_d, Y) (dimension
       %   d + 1) for a common denominator Y.  d = 1: Rice's expansion (Corollary 5); d >= 2:
-      %   Theorem 4 and Corollary 1.  r.f(M), M = 1..order; r.shat the saddlepoint of K_W.
+      %   Theorem 4 and Corollary 3.  r.f(M), M = 1..order; r.shat the saddlepoint of K_W.
       [order, ~, ~, opts] = parseopts('ratio_density', numel(r0), varargin{:});
       r0 = reshape(r0, 1, []); d = numel(r0); K2 = ratiocgf(obj, d, 'ratio_density');
       if d == 1 && ~isfield(opts, 'general')          % 'general', true: the d-ratio code for d = 1
@@ -205,6 +211,59 @@ methods
       if ~isempty(signs), args = [args(:)' {'signs', signs}]; end
       t = tailprob(KW, zeros(1, d), 'order', order, 'lower', lower, args{:});
       r = struct('F', t.F, 'shat', t.tau, 'status', t.status, 'info', t.info);
+   end
+
+   %---------------------------------------------------------------- Studentized means
+   function sd = studentized_saddlepoint(obj, q)
+      %STUDENTIZED_SADDLEPOINT the saddlepoint (s, t, v) of the expansions for Q = X/sqrt(Y) at q:
+      %   the root of K_s = q v, K_t = v^2, q s + 2 t v = 0 with v > 0, K the joint cgf of (X, Y),
+      %   Y > 0, by Newton's method with continuation in q from q0 = E(X)/E(Y)^(1/2), where
+      %   s = t = 0.  sd.s, sd.t, sd.v, sd.q0.
+      studcheck(obj, 'studentized_saddlepoint'); sd = stud_saddle(obj, scalarq(q, 'studentized_saddlepoint'));
+   end
+   function r = studentized_locus(obj, s, tguess)
+      %STUDENTIZED_LOCUS the point of the saddlepoint locus s K_s + 2 t K_t = 0 with abscissa s,
+      %   by Newton's method in t from tguess; r.t, r.v = K_t^(1/2) and r.q = K_s/v, the q whose
+      %   saddlepoint it is.  The saddlepoints of all q lie on this curve through the origin.
+      studcheck(obj, 'studentized_locus'); r = stud_locus(obj, s, tguess);
+   end
+   function r = studentized_density(obj, q, varargin)
+      %STUDENTIZED_DENSITY saddlepoint expansions of orders 1..order of the density at q of
+      %   Q = X/sqrt(Y), Y > 0, from the joint cgf K of (X, Y) (Theorem 2 of Bao, Broda and Kan):
+      %   r.f(M) keeps the terms m <= M - 1 of the expansion in powers of 1/n (relative error
+      %   O(n^-M), the n absorbed in K).  With psi(s, t) = K(s, t) + q^2 s^2/(4t), the amplitude
+      %   expansion of a bivariate integral about the saddlepoint (s, t, v), evaluated in the
+      %   coordinates of a complex factorization of psi'' (indefinite where t < 0).
+      %   r = studentized_density(K, q, 'order', M, 'saddle', sd).  r.saddle; r.status;
+      %   r.info.kappa: the cancellation indicator, large when |t| is large; the status is
+      %   'coefficients inaccurate' when it exceeds 1e10 (the computation is in double precision;
+      %   the Julia package repeats it in BigFloat when the indicator exceeds 1e6).
+      studcheck(obj, 'studentized_density');
+      [order, ~, saddle] = studopts('studentized_density', varargin{:});
+      r = stud_density(obj, scalarq(q, 'studentized_density'), order, saddle);
+   end
+   function r = studentized_tailprob(obj, q, varargin)
+      %STUDENTIZED_TAILPROB saddlepoint expansions of orders 1..order of P(Q >= q) for
+      %   Q = X/sqrt(Y), Y > 0, from the joint cgf K of (X, Y) (Theorem 3 of Bao, Broda and Kan):
+      %   r.F(M) keeps the terms of orders n^(-m/2), m <= 2M - 1 (relative error O(n^-M));
+      %   r.info.Fp(j+1), j = 0..2M-1, the expansions with the terms up to n^(-j/2).
+      %   r = studentized_tailprob(K, q, 'order', M, 'lower', true) gives P(Q <= q); 'saddle', sd
+      %   supplies the saddlepoint.  Hauschildt-Robinson type in s after the t-integral is
+      %   expanded by Laplace's method; r.info.kappa: the cancellation indicator.
+      studcheck(obj, 'studentized_tailprob');
+      [order, lower, saddle] = studopts('studentized_tailprob', varargin{:});
+      r = stud_tailprob(obj, scalarq(q, 'studentized_tailprob'), order, lower, saddle);
+   end
+   function r = studentized_quantile(obj, prob, varargin)
+      %STUDENTIZED_QUANTILE the quantile of the saddlepoint distribution function of order
+      %   'order' (studentized_tailprob with 'lower', true): P(Q <= q) = prob.  The search runs
+      %   over s along the saddlepoint locus (studentized_locus), so that no saddlepoint equation
+      %   is solved for a trial q.  r = studentized_quantile(K, prob, 'order', M, 'tol', 1e-10);
+      %   r.q, r.saddle.
+      studcheck(obj, 'studentized_quantile');
+      [order, ~, ~, tol] = studopts('studentized_quantile', varargin{:});
+      if ~(isscalar(prob) && prob > 0 && prob < 1), error('CGF:prob', 'studentized_quantile: prob must be in (0, 1)'); end
+      r = stud_quantile(obj, prob, order, tol);
    end
 
    %---------------------------------------------------------------- transformations
@@ -284,6 +343,27 @@ function [order, lower, signs, opts] = parseopts(name, d, varargin)
    if ~isempty(signs) && (numel(signs) ~= d || ~all(abs(signs) == 1)), error('CGF:signs', '%s: signs must be %d values +-1', name, d); end
 end
 function s = lower_(s), s = lower(s); end
+function studcheck(obj, name)
+   if obj.d ~= 2, error('CGF:dim', '%s: K must be the joint cumulant generating function of (X, Y), of dimension 2', name); end
+end
+function q = scalarq(q, name)
+   if ~(isnumeric(q) && isscalar(q) && isreal(q) && isfinite(q)), error('CGF:q', '%s: q must be a finite real scalar', name); end
+   q = double(q);
+end
+function [order, lower, saddle, tol] = studopts(name, varargin)
+   order = 3; lower = false; saddle = []; tol = 1e-10;
+   if mod(numel(varargin), 2), error('CGF:opts', '%s: options must be name-value pairs', name); end
+   for i = 1:2:numel(varargin)
+      switch lower_(varargin{i})
+         case 'order', order = varargin{i+1};
+         case 'lower', lower = logical(varargin{i+1});
+         case 'saddle', saddle = varargin{i+1};
+         case 'tol', tol = varargin{i+1};
+         otherwise, error('CGF:opts', '%s: unknown option %s', name, varargin{i});
+      end
+   end
+   if ~(isscalar(order) && order >= 1 && order == round(order)), error('CGF:order', '%s: order must be a positive integer', name); end
+end
 function sg = cornersigns(d, lower, signs)
    if ~isempty(signs), sg = reshape(signs, 1, []); elseif lower, sg = -ones(1, d); else, sg = ones(1, d); end
 end
