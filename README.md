@@ -1,5 +1,7 @@
 # SaddlepointExpansions for MATLAB
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23940456.svg)](https://doi.org/10.5281/zenodo.23940456)
+
 Saddlepoint expansions of any order for tail probabilities and densities of random vectors,
 from the cumulant generating function alone. This is the MATLAB counterpart of the Julia package
 [SaddlepointExpansions.jl](https://github.com/s-broda/SaddlepointExpansions.jl) and implements the
@@ -137,6 +139,8 @@ and, for the Studentized-mean functions,
 
 > Bao, Y., Broda, S. A. and Kan, R. Inversion formulas and saddlepoint expansions for Studentized means.
 
+The package itself is archived on Zenodo, DOI [10.5281/zenodo.23940456](https://doi.org/10.5281/zenodo.23940456)
+(all versions; version 0.2.3 is [10.5281/zenodo.23940457](https://doi.org/10.5281/zenodo.23940457)).
 `CITATION.cff` has the citation of the package.
 
 ## License
