@@ -95,6 +95,27 @@ methods
       end
       if isempty(p) || ~isfinite(p.C(1)), p = []; end
    end
+   function p = taylordd(obj, t, N, M)
+      %TAYLORDD Taylor polynomial of degree N in v of K(t + M v) with double-double coefficients
+      %   (a scalar tpsdd); t a double or dd vector, M = [] for the identity; [] outside the
+      %   domain.  K is evaluated through its function on double-double series (automatic
+      %   differentiation); a closed-form 'Taylor' function, which works in double precision, is
+      %   not used, so the function must be written with operations that tpsdd supports.
+      if nargin < 4, M = []; end
+      t = reshape(dd(t), [], 1); N = max(N, 1);
+      if ~isempty(obj.domain) && ~obj.domain(double(t)), p = []; return; end
+      if isempty(M), k = obj.d; else, k = size(M, 2); end
+      v = tpsdd.vars(k, N);
+      if isempty(M), arg = tpsdd.const(t, k, N) + v; else, arg = tpsdd.const(t, k, N) + M*v; end
+      try
+         p = obj.fun(arg);
+      catch err
+         if any(strcmp(err.identifier, {'tps:domain', 'dd:domain'})), p = []; return; end
+         rethrow(err);
+      end
+      if ~isa(p, 'tpsdd'), p = tpsdd.const(p, k, N); end
+      if ~isfinite(p), p = []; end
+   end
    function D = derivatives(obj, t, N)
       %DERIVATIVES all derivatives of K of orders <= N at t: D.nu (one multi-index per row, in
       %   graded order) and D.value; [] outside the domain.  D.value(1) is K(t).
@@ -235,12 +256,31 @@ methods
       %   expansion of a bivariate integral about the saddlepoint (s, t, v), evaluated in the
       %   coordinates of a complex factorization of psi'' (indefinite where t < 0).
       %   r = studentized_density(K, q, 'order', M, 'saddle', sd).  r.saddle; r.status;
-      %   r.info.kappa: the cancellation indicator, large when |t| is large; the status is
-      %   'coefficients inaccurate' when it exceeds 1e10 (the computation is in double precision;
-      %   the Julia package repeats it in BigFloat when the indicator exceeds 1e6).
+      %   r.info.kappa: the cancellation indicator, large when |t| is large.  When it exceeds 1e6
+      %   the computation is repeated in double-double arithmetic (about 32 digits: the Taylor
+      %   polynomial of K by tpsdd, the saddlepoint refined, all sums; r.info.refined is then
+      %   'double-double'), as the Julia package repeats it in BigFloat; 'refine', false keeps the
+      %   double-precision result (status 'coefficients inaccurate' when the indicator exceeds
+      %   1e10), and 'precision', 'dd' computes in double-double from the start.  The refinement
+      %   evaluates K on double-double series (CGF/taylordd), so K must be written with operations
+      %   that tpsdd supports; if it fails, the status is 'refinement failed'.
       studcheck(obj, 'studentized_density');
-      [order, ~, saddle] = studopts('studentized_density', varargin{:});
-      r = stud_density(obj, scalarq(q, 'studentized_density'), order, saddle);
+      [order, ~, saddle, ~, refine, prec] = studopts('studentized_density', varargin{:});
+      q = scalarq(q, 'studentized_density');
+      if strcmp(prec, 'dd')
+         if isempty(saddle), saddle = stud_saddle(obj, q); end
+         r = stud_density_dd(obj, q, order, saddle);
+         return
+      end
+      r = stud_density(obj, q, order, saddle);
+      if refine && r.info.kappa(end) > 1e6
+         % the terms cancel strongly: repeat the computation in double-double arithmetic
+         try
+            r = stud_density_dd(obj, q, order, r.saddle);
+         catch err
+            r.status = 'refinement failed'; r.info.refine_error = err.message;
+         end
+      end
    end
    function r = studentized_tailprob(obj, q, varargin)
       %STUDENTIZED_TAILPROB saddlepoint expansions of orders 1..order of P(Q >= q) for
@@ -249,10 +289,18 @@ methods
       %   r.info.Fp(j+1), j = 0..2M-1, the expansions with the terms up to n^(-j/2).
       %   r = studentized_tailprob(K, q, 'order', M, 'lower', true) gives P(Q <= q); 'saddle', sd
       %   supplies the saddlepoint.  Hauschildt-Robinson type in s after the t-integral is
-      %   expanded by Laplace's method; r.info.kappa: the cancellation indicator.
+      %   expanded by Laplace's method; r.info.kappa: the cancellation indicator.  'precision',
+      %   'dd' computes in double-double arithmetic (CGF/taylordd; the integrals I_m in variable
+      %   precision).
       studcheck(obj, 'studentized_tailprob');
-      [order, lower, saddle] = studopts('studentized_tailprob', varargin{:});
-      r = stud_tailprob(obj, scalarq(q, 'studentized_tailprob'), order, lower, saddle);
+      [order, lower, saddle, ~, ~, prec] = studopts('studentized_tailprob', varargin{:});
+      q = scalarq(q, 'studentized_tailprob');
+      if strcmp(prec, 'dd')
+         if isempty(saddle), saddle = stud_saddle(obj, q); end
+         r = stud_tailprob_dd(obj, q, order, lower, saddle);
+      else
+         r = stud_tailprob(obj, q, order, lower, saddle);
+      end
    end
    function r = studentized_quantile(obj, prob, varargin)
       %STUDENTIZED_QUANTILE the quantile of the saddlepoint distribution function of order
@@ -350,8 +398,8 @@ function q = scalarq(q, name)
    if ~(isnumeric(q) && isscalar(q) && isreal(q) && isfinite(q)), error('CGF:q', '%s: q must be a finite real scalar', name); end
    q = double(q);
 end
-function [order, lower, saddle, tol] = studopts(name, varargin)
-   order = 3; lower = false; saddle = []; tol = 1e-10;
+function [order, lower, saddle, tol, refine, prec] = studopts(name, varargin)
+   order = 3; lower = false; saddle = []; tol = 1e-10; refine = true; prec = 'double';
    if mod(numel(varargin), 2), error('CGF:opts', '%s: options must be name-value pairs', name); end
    for i = 1:2:numel(varargin)
       switch lower_(varargin{i})
@@ -359,6 +407,10 @@ function [order, lower, saddle, tol] = studopts(name, varargin)
          case 'lower', lower = logical(varargin{i+1});
          case 'saddle', saddle = varargin{i+1};
          case 'tol', tol = varargin{i+1};
+         case 'refine', refine = logical(varargin{i+1});
+         case 'precision'
+            prec = lower_(varargin{i+1});
+            if ~any(strcmp(prec, {'double', 'dd'})), error('CGF:opts', '%s: precision must be ''double'' or ''dd''', name); end
          otherwise, error('CGF:opts', '%s: unknown option %s', name, varargin{i});
       end
    end

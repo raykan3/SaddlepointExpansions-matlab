@@ -181,6 +181,8 @@ ok = cmp('ratio2 common', ratio_density(Kg3, [0.5 0.8], 'order', 4).f, get("rati
 ok = cmp('ratio2 general d=1', ratio_density(Kq, 1.2, 'order', 4, 'general', true).f, get("ratio2", "f_qf_general"), verbose) && ok;
 %% Studentized means Q = X/sqrt(Y) (Bao, Broda and Kan): the tests of the Julia and Python packages
 ok = test_studentized(verbose) && ok;
+%% double-double arithmetic (dd, tpsdd) and the double-double Studentized expansions
+ok = test_dd(verbose, here) && ok;
 if ok, fprintf('all tests passed\n'); else, fprintf('SOME TESTS FAILED\n'); end
 end
 
@@ -221,10 +223,10 @@ for m = 1:3
    q = ref{m}{1}; K = dickey_fuller_cgf(m);
    r = studentized_tailprob(K, q, 'order', 3, 'lower', true);
    ok = check(sprintf('Dickey-Fuller M%d F', m), r.info.Fp, ref{m}{2}, 1e-8/0.04, verbose) && ok;
-   d = studentized_density(K, q, 'order', 4);
+   d = studentized_density(K, q, 'order', 4, 'refine', false);
    ok = check(sprintf('Dickey-Fuller M%d f', m), d.f(1:3), ref{m}{3}(1:3), 2e-6, verbose) && ok;
    ok = check(sprintf('Dickey-Fuller M%d f(4)', m), d.f(4), ref{m}{3}(4), 1e-3, verbose) && ok;
-   % the cancellation indicator reports where double precision runs out (M2 at order 4)
+   % the cancellation indicator reports where double precision runs out (M2 at order 4; without refinement)
    ok = check(sprintf('Dickey-Fuller M%d status', m), double(strcmp(d.status, 'coefficients inaccurate')), double(m == 2), 0, verbose) && ok;
 end
 K = dickey_fuller_cgf(3, 'c', -5);                     % the 0.75 quantile of M3 under c = -5
@@ -234,6 +236,50 @@ ok = check('Dickey-Fuller c=-5 F', r.info.Fp(end), 0.739908646, 1e-8/0.74, verbo
 Q = studentized_quantile(dickey_fuller_cgf(2), 0.05, 'order', 3);
 ok = check('Dickey-Fuller M2 quantile', Q.q, -2.859305, 1e-5/2.86, verbose) && ok;
 ok = check('Dickey-Fuller window', eval(dickey_fuller_cgf(2, 'c', -5), [0.3 11]), eval(dickey_fuller_cgf(2, 'c', -5, 'window', 1e-3), [0.3 11]), 1e-10, verbose) && ok;
+end
+
+function ok = test_dd(verbose, here)
+ok = true;
+rel = @(a, X) double(max(abs((vpa(a, 40) - X)./X)));      % a: dd, X: sym
+% the arithmetic and the elementary functions against vpa
+A = sym(1)/3; B = sqrt(sym(2)); a = dd(A); b = dd(B);
+ok = echeck('dd arithmetic', rel([a + b, a - b, a*b, a/b, sqrt(b), b^5], vpa([A + B, A - B, A*B, A/B, sqrt(B), B^5], 40)), 1e-30, verbose) && ok;
+ok = echeck('dd functions', rel([exp(a), log(b), erfc(b)], vpa([exp(A), log(B), erfc(B)], 40)), 1e-30, verbose) && ok;
+x = dd((1:1000)')/7;
+ok = echeck('dd sum', rel(sum(x), vpa(sym(500500)/7, 40)), 1e-30, verbose) && ok;
+% derivatives of the double-double Taylor class against symbolic differentiation
+syms y1 y2
+v = tpsdd.vars(2, 6);
+p = exp(v(1) + 2*v(2)).*log(1 + v(1)) + sqrt(4 + v(2)).*atan(0.25 + v(1).*v(2)) + sinh(v(1))./cosh(v(2) + 1);
+g = exp(y1 + 2*y2)*log(1 + y1) + sqrt(4 + y2)*atan(sym(1)/4 + y1*y2) + sinh(y1)/cosh(y2 + 1);
+nus = [0 0; 1 1; 3 2; 0 6; 2 4; 5 1];
+e = 0;
+for i = 1:size(nus, 1)
+   ex = subs(diff(diff(g, y1, nus(i, 1)), y2, nus(i, 2)), [y1 y2], [0 0]);
+   e = max(e, rel(coef(p, nus(i, :)), vpa(ex, 40)));
+end
+ok = echeck('tpsdd derivatives', e, 1e-28, verbose) && ok;
+% the Studentized expansions against SaddlepointExpansions.jl in BigFloat (256 bits),
+% studentized_reference.csv made by julia_studentized_reference.jl
+fn = fullfile(here, 'studentized_reference.csv');
+if ~isfile(fn), fprintf('studentized_reference.csv not found: run julia_studentized_reference.jl\n'); ok = false; return; end
+R = readtable(fn, 'TextType', 'string', 'VariableNamingRule', 'preserve');
+get = @(c, q) R.value(R.("case") == c & R.quantity == q);
+tol = 3e-16;                                        % about one unit in the last place
+mu = 1; nu = 3; n = 16;
+K1 = CGF(@(t) mu*t(1) + t(1)^2/2 - nu/2*log(1 - 2*t(2)/nu), 2, 'domain', @(t) t(2) < nu/2);
+Kn = sample_mean(K1, n);
+d = studentized_density(Kn, 0.5, 'order', 6, 'precision', 'dd');
+ok = check('dd stud. f nct q=0.5', d.f, get("nct_0.5", "f"), tol, verbose) && strcmp(d.status, 'ok') && ok;
+r = studentized_tailprob(Kn, 0.5, 'order', 4, 'lower', true, 'precision', 'dd');
+ok = check('dd stud. Fp nct q=0.5', r.info.Fp, get("nct_0.5", "Fp"), tol, verbose) && ok;
+% the default refinement: the Dickey-Fuller M2 density at order 5 (kappa about 1e17 in double)
+d = studentized_density(dickey_fuller_cgf(2), -2.862, 'order', 5);
+fr = get("df2", "f");
+ok = check('dd stud. f DF M2 refined', d.f, fr(1:5), 1e-14, verbose) && strcmp(d.status, 'ok') ...
+   && strcmp(d.info.refined, 'double-double') && ok;
+r = studentized_tailprob(dickey_fuller_cgf(3, 'c', -5), -2.025180818400757, 'order', 3, 'lower', true, 'precision', 'dd');
+ok = check('dd stud. Fp DF c=-5', r.info.Fp, get("df3_c-5", "Fp"), tol, verbose) && ok;
 end
 
 function v = qfgeneric(t, B1, B2, nu)
@@ -271,4 +317,9 @@ ok = e <= tol;
 if verbose || ~ok, fprintf('%-24s max rel. diff %8.1e  %s\n', name, e, ifelse(ok, 'ok', 'FAILED')); end
 end
 function ok = check(name, a, b, tol, verbose), ok = cmp(name, a, b, verbose, tol); end
+function ok = echeck(name, e, tol, verbose)
+% a relative error e computed by the caller (in higher precision)
+ok = e <= tol;
+if verbose || ~ok, fprintf('%-24s max rel. diff %8.1e  %s\n', name, e, ifelse(ok, 'ok', 'FAILED')); end
+end
 function s = ifelse(c, a, b), if c, s = a; else, s = b; end, end

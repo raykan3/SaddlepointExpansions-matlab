@@ -2,3 +2,5 @@ doc/*.aux
 doc/*.log
 doc/*.out
 doc/*.toc
+tests/*.log
+tests/*.bat

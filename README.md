@@ -13,7 +13,7 @@ for the density, distribution function and quantiles of `X/sqrt(Y)` (`studentize
 `studentized_tailprob`, `studentized_quantile`). The expansion of order `M` has relative error
 `O(n^-M)`; saddlepoints with negative components are handled by inclusion-exclusion.
 
-Version 0.2.2 (November 2026), the version of the Julia and Python packages with the same
+Version 0.2.3 (November 2026); version 0.2.2 of the Julia and Python packages has the same
 functions.
 
 The cumulant generating function is supplied as an ordinary MATLAB function. All its derivatives
@@ -53,6 +53,7 @@ r = tailprob(Kn, [3 3], 'lower', true);     % P(mean1 <= 3, mean2 <= 3)
 | `normal_cgf`, `gamma_cgf`, `ncx2_cgf`, `exponential_sums_cgf`, `quadratic_forms_cgf`, `wishart_diag_cgf`, `common_component_cgf`, `uniform_cgf` | library of cumulant generating functions |
 | `sinhc`, `sincu` | `sinh(x)/x` and `sin(x)/x` with the removable singularity handled |
 | `tps` | the Taylor class (`tps.vars(k, N)`, `coef(p, nu)`) |
+| `dd`, `tpsdd`, `taylordd(K, t, N)` | double-double numbers (about 32 digits), the Taylor class in double-double, and the Taylor polynomial of `K` in double-double |
 
 Further name-value pairs of `tailprob` and `density` are passed to the engine: `nG`, `qtol`,
 `logscale` (bivariate), `method`, `nqmc` (four or more dimensions), and so on.
@@ -104,7 +105,9 @@ The full manual is `doc/manual.pdf`.
   relative (at most `1e-11`), and those for several ratios are also checked against closed forms;
   the Studentized-mean functions are checked as in the Julia and Python packages, against the
   noncentral t and against the reference values of the Dickey-Fuller t-ratio
-  (`tests/dickey_fuller_cgf.m`, a test fixture);
+  (`tests/dickey_fuller_cgf.m`, a test fixture); the double-double arithmetic is checked against
+  `vpa`, and the Studentized expansions in double-double against the Julia package in `BigFloat`
+  with 256 bits (`studentized_reference.csv`, made by `julia_studentized_reference.jl`);
 * `examples/demo_spx.m`: examples;
 * `doc/`: the manual (`manual.pdf`, source `manual.tex`).
 
@@ -114,10 +117,15 @@ The same expansions are in the Julia package
 [SaddlepointExpansions.jl](https://github.com/s-broda/SaddlepointExpansions.jl) and the Python
 package [saddlepoint-expansions](https://github.com/s-broda/saddlepoint-expansions)
 (`Pkg.add("SaddlepointExpansions")` and `pip install saddlepoint-expansions`). The MATLAB
-computations are in double precision; the Julia package also runs in `BigFloat`, and repeats the
-density of a Studentized mean in `BigFloat` where its terms cancel strongly (here, as in the Python
-package, `r.status` then reports `'coefficients inaccurate'`). For variable precision use the
-engine directly with a `Kfun` that accepts `vpa` arguments.
+computations are in double precision; the Julia package also runs in `BigFloat`. Where the terms
+of the density of a Studentized mean cancel strongly (cancellation indicator above `1e6`), the Julia
+package repeats it in `BigFloat` and this package in double-double arithmetic (`dd`, `tpsdd`; about
+32 digits, `r.info.refined = 'double-double'`), which agrees with the Julia values to the last digit
+of double precision except at the most extreme cancellations (`r.status` then still reports
+`'coefficients inaccurate'`); the Python package works in double precision. `'refine', false` keeps
+the double-precision result, and `'precision', 'dd'` computes the density or the distribution function
+in double-double from the start; the Symbolic Math Toolbox is needed for these. For variable
+precision use the engine directly with a `Kfun` that accepts `vpa` arguments.
 
 ## Citation
 

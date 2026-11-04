@@ -17,7 +17,7 @@
 \title{SaddlepointExpansions for MATLAB\\[4pt]
 \large User manual}
 \author{Simon A. Broda and Raymond Kan}
-\date{Version 0.2.2, November 2026}
+\date{Version 0.2.3, November 2026}
 
 \begin{document}
 \sloppy
@@ -61,7 +61,7 @@ The package is the MATLAB counterpart of the Julia package \prog{SaddlepointExpa
 Simon Broda (\url{https://github.com/s-broda/SaddlepointExpansions.jl}), which also has a Python
 version (\url{https://github.com/s-broda/saddlepoint-expansions}). The packages have the same
 interface and share a set of reference values, on which they agree to about $10^{-13}$ relative
-(\S\,\ref{sec:valid}); the Julia package also runs in variable precision (\S\,\ref{sec:precision}).
+(\S\,\ref{sec:valid}). Where double precision runs out, the Julia package recomputes in variable precision and this package in double-double arithmetic, about 32 digits (\S\,\ref{sec:dd}).
 
 Theorem and corollary numbers refer to the version of the paper of November 2026: Theorem~1
 (orthant probability), Theorem~2 (inclusion--exclusion), Theorem~3 (density), Theorem~4 and
@@ -433,10 +433,26 @@ studentized_quantile(K, 0.05, 'order', 3).q                     % -2.85930
 (the exact quantile of the limit is $-2.861569$). It is a test fixture, not part of the package.
 
 \paragraph{Precision.} Where $|\hat t|$ is large the terms of high order of the density cancel by
-many orders of magnitude; \prog{r.status} is \prog{'coefficients inaccurate'} when the indicator
-exceeds $10^{10}$ (for the Dickey--Fuller model 2 above, at order four). The Julia package repeats
-the computation in \prog{BigFloat} when the indicator exceeds $10^6$; this package, like the Python
-one, works in double precision. The distribution function is much less affected.
+many orders of magnitude (for the Dickey--Fuller model 2 above the indicator is about $10^{8}$ at
+order three, $10^{13}$ at order four and $10^{17}$ at order five). When \prog{r.info.kappa(end)}
+exceeds $10^6$, \prog{studentized\_density} repeats the computation in double-double arithmetic
+(\S\,\ref{sec:dd}), as the Julia package repeats it in \prog{BigFloat}: the saddlepoint is refined, and
+the Taylor polynomial of $K$, the whitening and all sums carry about 32 digits; \prog{r.info.refined}
+is then \prog{'double-double'}. The relative error of the refined values is about
+$\kappa\times10^{-32}$: for the Dickey--Fuller model 2 the refined density agrees with the Julia
+package in \prog{BigFloat} to the last digit of double precision up to order four and to $10^{-15}$ at
+order five; \prog{r.status} remains \prog{'coefficients inaccurate'} when
+$\kappa\,2^{-104}>10^{-10}$ (order six for that model). The options are
+\begin{lstlisting}
+r = studentized_density(K, q, 'order', M, 'refine', false)    % double precision only
+r = studentized_density(K, q, 'order', M, 'precision', 'dd')  % double-double from the start
+r = studentized_tailprob(K, q, 'order', M, 'precision', 'dd')
+\end{lstlisting}
+without refinement \prog{r.status} is \prog{'coefficients inaccurate'} when the indicator exceeds
+$10^{10}$, and \prog{'refinement failed'} if $K$ cannot be evaluated on double-double series. The
+distribution function is much less affected; in double-double it costs a few seconds, mostly in the
+integrals $I_m$, which are computed in variable precision. A refined density of order six costs about
+ten seconds.
 
 \section{Derivatives, saddlepoints and the Taylor class}\label{sec:tps}
 
@@ -462,6 +478,30 @@ A function $f$ of a series $p=p_0+q$, $q$ without constant term, is evaluated by
 $f(p)=\sum_{j=0}^{N}f^{(j)}(p_0)q^j/j!$; where $f$ is not analytic at $p_0$ an error with identifier
 \prog{'tps:domain'} is raised. The coefficients are stored in \prog{p.C}, one column per element of
 the array.
+
+\subsection{Double-double arithmetic}\label{sec:dd}
+
+The class \prog{dd} holds a number as the unevaluated sum $x_{\rm hi}+x_{\rm lo}$ of two doubles with
+$|x_{\rm lo}|\leq\frac12\mathrm{ulp}(x_{\rm hi})$, about 32 significant digits, with the error-free
+transformations of Knuth and Dekker (two-sum, two-product by splitting). Addition, multiplication,
+division and the square root are computed in this arithmetic, sums are compensated and pairwise; the
+other elementary functions (\prog{exp}, \prog{log}, \prog{erfc}, \ldots) are evaluated through
+\prog{vpa} with 40 digits and rounded back.
+\begin{lstlisting}
+x = dd(sym(1)/3)            % from a symbolic number, a double, or (hi, lo)
+y = sqrt(x)*x + 1;  vpa(y, 32)   % double(y) rounds to double
+\end{lstlisting}
+The class \prog{tpsdd} is the Taylor class in double-double: the same interface as \prog{tps}
+(\prog{tpsdd.vars}, \prog{tpsdd.const}, \prog{coef}, arithmetic, \prog{exp}, \prog{log}, \prog{sqrt},
+\prog{atan}, \prog{sinhc}, \ldots), with the coefficients in \prog{p.H} and \prog{p.L}; \prog{coef}
+returns a \prog{dd}. The derivatives of a function at the expansion point, needed for the composition,
+are computed in \prog{vpa}. \prog{taylordd(K, t, N, M)} is the Taylor polynomial of $K$ in
+double-double; it evaluates the function of \prog{K} on \prog{tpsdd} series, so it applies to the
+cumulant generating functions written with these operations (the library, the transformations, and
+\prog{tests/dickey\_fuller\_cgf.m}), but not to a closed-form \prog{'Taylor'} function, which works in
+double precision. A product of two bivariate series of degree 30 takes about ten milliseconds,
+several orders of magnitude less than the same product in \prog{vpa}. The Symbolic Math Toolbox is needed for the constants and the elementary
+functions.
 
 \section{The expansions}\label{sec:background}
 
@@ -569,7 +609,10 @@ f_Q(q)\approx\frac{\hat v^2e^{\psi(\hat s,\hat t)}}{\sqrt{\pi}\,\{\hat t\,|\psi'
 the amplitude expansion of \S\,\ref{sec:bgratio} in two variables with the amplitudes
 $h_0=(s/\hat s)^2(t/\hat t)^{-5/2}$ and $h_1=(t/\hat t)^{-3/2}/(2\hat t\hat v^2)$; the Hessian
 $\psi''$ is indefinite where $\hat t<0$, and the Hermite moments are evaluated in the coordinates of
-a complex factorization $\psi''=LL\tp$. For the distribution function the $t$-integral is expanded by
+a complex factorization $\psi''=LL\tp$ from the eigen-decomposition $\psi''=V\Lambda V\tp$. The
+double-double computation uses the real whitening $W=V|\Lambda|^{-1/2}$, $W\tp\psi''W=\mathrm{diag}(\sigma)$
+with $\sigma_i=\pm1$, and the Hermite moments of the indefinite form,
+$\prod_i(-1)^{n_i/2}\sigma_i^{n_i/2}(n_i-1)!!$, which gives terms of the same magnitudes. For the distribution function the $t$-integral is expanded by
 Laplace's method, which leaves a univariate integral of Hauschildt--Robinson type in $s$ with the
 exponent $\Psi(s)=\psi(s,t(s))$, $\psi_t(s,t(s))=0$, and amplitudes $H_k(s)$; the Taylor coefficients
 of $\Psi$ and of the $H_k$ at $\hat s$ are obtained from the Taylor polynomial of $K$ at
@@ -577,18 +620,21 @@ $(\hat s,\hat t)$ by Newton's method and composition on power series, exact up t
 
 \section{Accuracy and precision}\label{sec:precision}
 
-The computations are in double precision. Rounding errors are about $10^{-14}$ relative in the
+The computations are in double precision, except the double-double refinement of the density of a
+Studentized mean (\S\,\ref{sec:dd}). Rounding errors are about $10^{-14}$ relative in the
 tests, far below the asymptotic errors of the expansions at the orders used in practice ($10^{-3}$ to
 $10^{-9}$), so double precision suffices for nearly all purposes. It matters in three situations:
 \begin{itemize}
 \item \emph{Cancellation in three or more dimensions.} At high orders the terms can cancel by many
 orders of magnitude. The engine reports this (\prog{kappa} in \prog{info}) and, when the
 cancellation exceeds $10^6$, tries to repeat the computation in variable precision. The Taylor class
-works in double precision only, so in this package that refinement is not possible: the
+\prog{tps} works in double precision, and its double-double counterpart is used only for Studentized
+means, so in this package that refinement is not possible: the
 double-precision values are kept and \prog{status} reports \prog{'refinement failed'}. The Julia
 package repeats the computation in \prog{BigFloat}.
 \item \emph{Studentized means.} The density of a Studentized mean can cancel strongly where the
-saddlepoint has large $|\hat t|$ (\S\,\ref{sec:stud}); \prog{status} reports it.
+saddlepoint has large $|\hat t|$; it is then recomputed in double-double arithmetic
+(\S\S\,\ref{sec:stud} and~\ref{sec:dd}), and \prog{status} reports what remains.
 \item \emph{Probabilities below about $10^{-308}$.} In two dimensions use \prog{'logscale'}
 (\S\,\ref{sec:tail}).
 \item \emph{Tables of very small relative errors}, at large $n$ and high order, need exact values and
@@ -646,7 +692,19 @@ against the reference values of Bao, Broda and Kan (the distribution function wi
 to $10^{-8}$, the density to $2\times10^{-6}$, a saddlepoint and a probability under a local
 alternative, and the $5\%$ quantile of model 2). The values agree with those of the Python package
 \prog{saddlepoint-expansions} 0.2.2 to about $10^{-13}$ for the noncentral $t$ and to
-$10^{-11}$--$10^{-9}$ for the Dickey--Fuller model, whose derivatives of high order carry rounding errors.
+$10^{-11}$--$10^{-9}$ for the Dickey--Fuller model, whose derivatives of high order carry rounding errors;
+\item double-double arithmetic: \prog{dd} against \prog{vpa} (about $10^{-32}$), the derivatives of a
+\prog{tpsdd} series against symbolic differentiation (about $10^{-32}$), and the Studentized expansions in
+double-double against the Julia package in \prog{BigFloat} with 256 bits
+(\prog{tests/studentized\_reference.csv}, generated by \prog{tests/julia\_studentized\_reference.jl}):
+the density of orders one to six and the distribution function with every half-order up to order
+four, for the noncentral $t$ at $q=0.5$ and the Dickey--Fuller model under a local alternative, agree
+to the last digit of double precision, and the refined density of the Dickey--Fuller model 2 to
+$10^{-15}$ at order five. Over all the reference values (the noncentral $t$ at $q=0.5,1.5,2.5$ and
+the three Dickey--Fuller models), double-double agrees to the last digit except the density of
+model 2 at order five ($10^{-15}$) and order six ($4\times10^{-10}$, $\kappa\approx10^{23}$); for that
+model double precision has errors of $2\times10^{-9}$ at order three and gives no correct digit at
+order six.
 \end{itemize}
 In addition, for all 24 points of the table of sample autocorrelations of the paper, the density and
 distribution function of two ratios computed by the package agree with those of the dedicated
@@ -664,8 +722,8 @@ call & result\\
 \prog{r = density(K, x, 'order', M, ...)} & densities; \prog{r.f}, \prog{r.tau}, \prog{r.status}, \prog{r.info}\\
 \prog{r = ratio\_density(K, r0, 'order', M)} & densities of $d=$ \prog{numel(r0)} ratios; \prog{r.f}, \prog{r.shat}, \prog{r.info} (for $d\geq2$: the terms \prog{a}, the log prefactor \prog{logC})\\
 \prog{r = ratio\_tailprob(K, r0, 'order', M, 'lower', tf, 'signs', s, ...)} & distribution functions of ratios; \prog{r.F}, \prog{r.shat}, \prog{r.status}, \prog{r.info}\\
-\prog{r = studentized\_density(K, q, 'order', M, 'saddle', sd)} & density of $X/\sqrt Y$; \prog{r.f}, \prog{r.saddle}, \prog{r.status}, \prog{r.info}\\
-\prog{r = studentized\_tailprob(K, q, 'order', M, 'lower', tf, 'saddle', sd)} & distribution function of $X/\sqrt Y$; \prog{r.F}, \prog{r.saddle}, \prog{r.status}, \prog{r.info.Fp}, \prog{r.info.kappa}\\
+\prog{r = studentized\_density(K, q, 'order', M, 'saddle', sd, 'refine', tf, 'precision', p)} & density of $X/\sqrt Y$; \prog{r.f}, \prog{r.saddle}, \prog{r.status}, \prog{r.info} (\prog{'refine'}, default \prog{true}: double-double when $\kappa>10^6$; \prog{p}: \prog{'double'} or \prog{'dd'})\\
+\prog{r = studentized\_tailprob(K, q, 'order', M, 'lower', tf, 'saddle', sd, 'precision', p)} & distribution function of $X/\sqrt Y$; \prog{r.F}, \prog{r.saddle}, \prog{r.status}, \prog{r.info.Fp}, \prog{r.info.kappa}\\
 \prog{r = studentized\_quantile(K, p, 'order', M, 'tol', tol)} & quantile of the expansion; \prog{r.q}, \prog{r.saddle}\\
 \prog{sd = studentized\_saddlepoint(K, q)}, \prog{studentized\_locus(K, s, tguess)} & the saddlepoint and the saddlepoint locus\\
 \prog{[tau, info] = saddlepoint(K, x)} & the saddlepoint\\
@@ -674,6 +732,9 @@ call & result\\
 \prog{v = eval(K, t)} & $K(t)$\\
 \prog{reflect}, \prog{marginal}, \prog{linear\_combination}, \prog{sample\_mean}, \prog{shift}, \prog{+} & transformations (\S\,\ref{sec:cgf})\\
 \prog{tps.vars(k, N)}, \prog{tps.const(c, k, N)}, \prog{coef(p, nu)}, \prog{double(p)}, \prog{tps.tables(k, N)} & the Taylor class\\
+\prog{x = dd(a)}, \prog{dd(hi, lo)}, \prog{vpa(x, n)}, \prog{double(x)} & double-double numbers (\S\,\ref{sec:dd})\\
+\prog{tpsdd.vars(k, N)}, \prog{tpsdd.const(c, k, N)}, \prog{tpsdd.fromtps(p)}, \prog{coef(p, nu)}, \prog{ddconst(p)} & the Taylor class in double-double\\
+\prog{p = taylordd(K, t, N, M)} & Taylor polynomial of $K(t+Mv)$ in double-double\\
 \prog{sinhc(x)}, \prog{sincu(x)} & $\sinh(x)/x$ and $\sin(x)/x$\\
 \prog{spx\_setup} & adds the package to the path\\
 \bottomrule

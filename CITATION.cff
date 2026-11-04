@@ -8,7 +8,7 @@ authors:
     given-names: Simon A.
   - family-names: Kan
     given-names: Raymond
-version: 0.2.2
+version: 0.2.3
 date-released: 2026-11-04
 repository-code: "https://github.com/raykan3/SaddlepointExpansions-matlab"
 license: MIT

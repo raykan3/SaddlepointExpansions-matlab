@@ -1,15 +1,19 @@
 % SaddlepointExpansions for MATLAB: saddlepoint expansions of any order from the cumulant
 % generating function (Broda and Kan); MATLAB counterpart of SaddlepointExpansions.jl.
-% Version 0.2.2 (November 2026), the version of the Julia and Python packages.
+% Version 0.2.3 (November 2026); version 0.2.2 of the Julia and Python packages has the same
+% functions.
 %
 % Cumulant generating functions and expansions
 %   CGF                   - a cumulant generating function; methods tailprob, density,
-%                           ratio_density, ratio_tailprob, saddlepoint, derivatives, taylor,
+%                           ratio_density, ratio_tailprob, saddlepoint, derivatives, taylor, taylordd,
 %                           reflect, marginal, linear_combination, sample_mean, shift, plus;
 %                           for a Studentized mean X/sqrt(Y) (Bao, Broda and Kan):
 %                           studentized_density, studentized_tailprob,
 %                           studentized_quantile, studentized_saddlepoint, studentized_locus
 %   tps                   - truncated multivariate power series (Taylor-mode differentiation)
+%   dd                    - double-double numbers (about 32 digits)
+%   tpsdd                 - truncated power series in double-double (CGF/taylordd; the
+%                           refinement of studentized_density)
 %   spx_setup             - adds the package and its engine to the path
 %
 % Library
