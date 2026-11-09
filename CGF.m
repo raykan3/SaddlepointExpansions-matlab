@@ -27,6 +27,16 @@ classdef CGF
 %                                            Y_j > 0 (Theorem 4); K of (X, Y) (dimension 2d) or
 %                                            of (X, Y) with a common denominator (d + 1); r.f(M)
 %      r = ratio_tailprob(K, r0, 'order', 3) P(R >= r0) ('lower', true: <=; 'signs', s); r.F(M)
+%   Conditional distributions (Broda and Kan, "Conditional and lattice saddlepoint expansions of
+%   arbitrary order"); A the indices of the tail components, the others, B, conditioned on:
+%      r = conditional_tailprob(K, x, A, 'order', 3)  P(X_A >= x_A | X_B = x_B) (Theorem 3);
+%                                            'lower', 'signs' as in tailprob; r.F(M), r.tau,
+%                                            r.taut, r.status, r.info
+%      r = conditional_density(K, x, A, 'order', 3)   the conditional density (Theorem 4); r.f(M)
+%   Lattice variables ('lattice', true; integer components in A, Theorem 5): continuity-
+%   corrected P(S_A >= k_A | S_B = k_B), and P(S_A = k_A | S_B = k_B); without conditioning,
+%   tailprob(K, k, 'lattice', true) for P(S >= k) and density(K, k, 'lattice', true) for
+%   P(S = k); 'sinh', 'saddle' (default) or 'origin' for the expansion of s/(2 sinh(s/2)).
 %   Studentized means Q = X/sqrt(Y), Y > 0, K the joint cgf of (X, Y) (dimension 2; Bao, Broda
 %   and Kan, "Inversion formulas and saddlepoint expansions for Studentized means"):
 %      r = studentized_density(K, q, 'order', 3)   density of Q at q; r.f(M)
@@ -145,7 +155,24 @@ methods
       %   pairs go to the engine: 'nG', 'qtol', 'nGmax', 'method' ('quad' or 'qmc'), 'nqmc',
       %   'nshift', 'seed', 'logscale' (d = 2); see spa_bi, spa_tri, spa_mv.
       %   d = 1: Hauschildt-Robinson (Corollary 2); d = 2: spa_orthant2; d >= 3: spa_orthant.
+      %   r = tailprob(K, k, 'order', M, 'lattice', true): X = S integer-valued and so is x = k;
+      %   r.F is then P(S >= k) with the continuity correction and the amplitude
+      %   prod_j s_j/(2 sinh(s_j/2)), by Corollary 1 of Broda and Kan, "Conditional and lattice
+      %   saddlepoint expansions of arbitrary order", the case without conditioning components (the
+      %   computation of conditional_tailprob with A = 1:d, and the same numbers): the
+      %   saddlepoint is taken at k - 1/2 in every component, and 'sinh', 'saddle' (default)
+      %   expands the amplitude about the saddlepoint, 'sinh', 'origin' about the origin, keeping
+      %   s^(2M-2) at order M (Kolassa 2003).  In one dimension r.F(1), with the terms of orders
+      %   n^0 and n^(-1/2), has the relative error O(n^-1) of the continuity-corrected
+      %   approximations of Daniels (1987).  'lower', true gives P(S <= k); saddlepoints with
+      %   negative components are handled by the inclusion-exclusion with
+      %   P(S_j <= k_j - 1) = P(-S_j >= -k_j + 1), the components not kept in a term being
+      %   marginalized.  r.info: Fp (the expansions with the terms up to n^(-j/2)), kappa, err,
+      %   nG ('nG' is the only engine option of this path).  Where the continuity-corrected point
+      %   is not inside the convex hull of the support (P(S >= 0) of a count) there is no
+      %   saddlepoint and an error with identifier 'spa_cond:support' is raised.
       [order, lower, signs, opts] = parseopts('tailprob', obj.d, varargin{:});
+      [lattice, sinhmode, opts] = latticeopts('tailprob', opts);
       x = reshape(x, 1, []);
       if numel(x) ~= obj.d, error('CGF:x', 'tailprob: x must have length %d', obj.d); end
       if ~all(isfinite(x)), error('CGF:x', 'tailprob: x must be finite'); end
@@ -153,6 +180,16 @@ methods
       Kr = obj; if any(sg ~= 1), Kr = reflect(obj, sg); end
       xr = sg .* x; maxdeg = 2*order + 1;
       Kf = cgf_kfun(Kr, maxdeg);
+      if lattice
+         % Corollary 1 of the conditional paper (B empty): the same computation as
+         % conditional_tailprob(K, x, 1:d, 'lattice', true)
+         nG = 64; if isfield(opts, 'nG'), nG = opts.nG; end
+         [F, ~, ci] = spa_cond(Kf, xr, 1:obj.d, order, struct('density', false, 'lattice', true, ...
+            'sinh', sinhmode, 'nG', nG, 'Kwhite', cgf_kwhite(Kr, maxdeg)));
+         r = struct('F', F, 'tau', sg.*ci.tau, 'status', ci.status, ...
+            'info', struct('Fp', ci.Pp, 'kappa', ci.kappaP, 'err', ci.err, 'nG', nG));
+         return
+      end
       if obj.d == 1
          [s, sinfo] = spa_saddle(Kf, xr, []);
          Kd = arrayfun(@(k) Kf(k, s), 0:maxdeg);
@@ -175,10 +212,24 @@ methods
       %   r = density(K, x, 'order', M).  r.f(M): the approximation of order M (relative error
       %   O(n^-M)); r.tau: the saddlepoint; r.status; r.info (for d >= 3, kappa_pdf: the
       %   cancellation among the terms).  Other name-value pairs go to spa_bi or spa_mv.
+      %   r = density(K, k, 'order', M, 'lattice', true): S integer-valued and x = k integer; r.f is
+      %   the probability P(S = k), the same expansion at k, the saddlepoint approximation of
+      %   Daniels (1987) at order one (Corollary 1 of Broda and Kan, "Conditional and lattice
+      %   saddlepoint expansions of arbitrary order", without conditioning components); it is
+      %   computed as conditional_density with A = 1:d, in whitened coordinates in any dimension,
+      %   and the numbers are the same.
       [order, ~, ~, opts] = parseopts('density', obj.d, varargin{:});
+      [lattice, ~, opts] = latticeopts('density', opts);
       x = reshape(x, 1, []);
       if numel(x) ~= obj.d, error('CGF:x', 'density: x must have length %d', obj.d); end
       maxdeg = 2*order + 1; Kf = cgf_kfun(obj, maxdeg);
+      if lattice
+         % P(S = k): the density expansion at k (Corollary 1 of the conditional paper, B empty),
+         % by the computation of conditional_density(K, x, 1:d, 'lattice', true)
+         [~, f, ci] = spa_cond(Kf, x, 1:obj.d, order, struct('tail', false, 'Kwhite', cgf_kwhite(obj, maxdeg)));
+         r = struct('f', f, 'tau', ci.tauf, 'status', ci.status, 'info', struct('kappa', ci.kappaf));
+         return
+      end
       if obj.d == 1
          [s, sinfo] = spa_saddle(Kf, x, []);
          Kd = arrayfun(@(k) Kf(k, s), 0:maxdeg);
@@ -232,6 +283,79 @@ methods
       if ~isempty(signs), args = [args(:)' {'signs', signs}]; end
       t = tailprob(KW, zeros(1, d), 'order', order, 'lower', lower, args{:});
       r = struct('F', t.F, 'shat', t.tau, 'status', t.status, 'info', t.info);
+   end
+
+   %---------------------------------------------------------------- conditional expansions
+   function r = conditional_tailprob(obj, x, A, varargin)
+      %CONDITIONAL_TAILPROB saddlepoint expansions of orders 1..order of the conditional
+      %   distribution function P(X_A >= x_A | X_B = x_B) (componentwise in A) at the point x (a
+      %   vector of length d); A holds the indices of the components whose tail is wanted, the
+      %   others, B, are conditioned on (Broda and Kan, "Conditional and lattice saddlepoint
+      %   expansions of arbitrary order", Theorem 3).
+      %   r = conditional_tailprob(K, x, A, 'order', M)
+      %   r.F(M): the numerator, the orthant-probability integral with the poles in the components
+      %   of A only, with the terms of orders n^(-m/2), m <= 2M-1, over the density expansion of
+      %   X_B with M terms; its relative error is O(n^-M) (the n absorbed in K).  With one tail
+      %   component, r.F(1) adds the terms of order n^(-1/2) to the conditional analogue
+      %   (u/z) exp((u^2-w^2)/2) Phibar(u) of the Hauschildt-Robinson approximation, in the
+      %   notation of Skovgaard (1987).  With B empty the expansion is that of tailprob.
+      %   'lower', true gives P(X_A <= x_A | X_B = x_B), and 'signs', s (one +-1 per component of
+      %   A) a mixed corner; the tail components are reflected (reflect).  When the saddlepoint has
+      %   negative components in A the expansion is applied through the inclusion-exclusion
+      %   identity of Remark 1 of the paper, every term with its own saddlepoint.
+      %   'lattice', true: the components in A are integer-valued and so is x(A); r.F is then
+      %   P(S_A >= k_A | S_B = k_B) by Theorem 5, with the continuity correction and the
+      %   amplitude prod_{j in A} s_j/(2 sinh(s_j/2)) expanded about the saddlepoint ('sinh',
+      %   'saddle', the default) or about the origin ('sinh', 'origin', Kolassa 2003).  'nG'
+      %   (64): Gauss-Legendre nodes per panel of the orthant integrals.
+      %   r.tau: the saddlepoint of K at x (at the corrected point for lattice variables);
+      %   r.taut: that of the marginal of X_B, embedded as (0_A, s_B); r.status: 'ok' or a
+      %   description of a problem (see spa_cond); r.info: Fp (the expansions with the terms of
+      %   the numerator up to n^(-j/2), j = 0..2*order-1, r.F(M) = Fp(2M); Fp(1) is the leading
+      %   term), kappa (the cancellation indicator of the numerator), kappa_den (that of the
+      %   denominator), err (the change with half the quadrature nodes) and nG.
+      %   All Taylor coefficients are generated by Taylor-mode differentiation directly in the
+      %   canonical coordinates of Section 5.2 of the paper, Y_A = X_A - C X_B, Y_B = L^{-1} X_B, in
+      %   which the tail components are uncorrelated with the conditioning components under the
+      %   tilted distribution and the latter are whitened; this is what keeps the terms from
+      %   cancelling in double precision.  See spa_cond (folder engine) for the details and the
+      %   derivative interface.
+      [order, lower, signs, lattice, sinhmode, nG] = condopts('conditional_tailprob', varargin{:});
+      dim = obj.d; x = reshape(x, 1, []);
+      if numel(x) ~= dim, error('CGF:x', 'conditional_tailprob: x must have length %d', dim); end
+      Av = condset('conditional_tailprob', A, dim);
+      sg = condsigns('conditional_tailprob', dim, Av, lower, signs);
+      Kr = obj; if any(sg ~= 1), Kr = reflect(obj, sg); end
+      xr = sg .* x; maxdeg = 2*order + 1;
+      [F, ~, ci] = spa_cond(cgf_kfun(Kr, maxdeg), xr, Av, order, struct('density', false, 'lattice', lattice, ...
+         'sinh', sinhmode, 'nG', nG, 'Kwhite', cgf_kwhite(Kr, maxdeg)));
+      r = struct('F', F, 'tau', sg.*ci.tau, 'taut', ci.taut, 'status', ci.status, 'info', ...
+         struct('Fp', ci.Pp, 'kappa', ci.kappaP, 'kappa_den', ci.kappaB, 'err', ci.err, 'nG', nG));
+   end
+   function r = conditional_density(obj, x, A, varargin)
+      %CONDITIONAL_DENSITY saddlepoint expansions of orders 1..order of the conditional density
+      %   f(x_A | x_B) of the components A of X given the others, B, at the point x (Theorem 4 of
+      %   Broda and Kan, "Conditional and lattice saddlepoint expansions of arbitrary order"): the
+      %   ratio of the density expansions of X at its saddlepoint and of X_B at its own, both with
+      %   the terms m <= M-1 at order M, relative error O(n^-M).  The leading term is the double
+      %   saddlepoint density approximation of Barndorff-Nielsen and Cox (1979).  Unlike the
+      %   distribution function, the expansion holds for saddlepoints in any orthant.
+      %   r = conditional_density(K, x, A, 'order', M); with 'lattice', true (integer-valued S)
+      %   the same formula is P(S_A = k_A | S_B = k_B) (Theorem 5), evaluated at the uncorrected
+      %   point x; the option only records this interpretation.  r.f(M); r.tau: the saddlepoint
+      %   of K at x; r.taut: that of the marginal of X_B, embedded as (0_A, s_B); r.status;
+      %   r.info: kappa (the cancellation indicator of the density expansion of X) and kappa_den
+      %   (that of X_B).  Both expansions are evaluated in whitened coordinates, with the Taylor
+      %   coefficients generated there directly.
+      [order, ~, ~, ~, ~, ~, used] = condopts('conditional_density', varargin{:});
+      if any(ismember(used, {'lower', 'signs', 'sinh', 'ng'})), error('CGF:opts', 'conditional_density: the options are order and lattice'); end
+      dim = obj.d; x = reshape(x, 1, []);
+      if numel(x) ~= dim, error('CGF:x', 'conditional_density: x must have length %d', dim); end
+      Av = condset('conditional_density', A, dim);
+      maxdeg = 2*order + 1;
+      [~, f, ci] = spa_cond(cgf_kfun(obj, maxdeg), x, Av, order, struct('tail', false, 'Kwhite', cgf_kwhite(obj, maxdeg)));
+      r = struct('f', f, 'tau', ci.tauf, 'taut', ci.taut, 'status', ci.status, ...
+         'info', struct('kappa', ci.kappaf, 'kappa_den', ci.kappaB));
    end
 
    %---------------------------------------------------------------- Studentized means
@@ -415,6 +539,53 @@ function [order, lower, saddle, tol, refine, prec] = studopts(name, varargin)
       end
    end
    if ~(isscalar(order) && order >= 1 && order == round(order)), error('CGF:order', '%s: order must be a positive integer', name); end
+end
+function [lattice, sinhmode, opts] = latticeopts(name, opts)
+   % the options lattice and sinh of tailprob and density, removed from the engine options
+   lattice = false; sinhmode = 'saddle';
+   if isfield(opts, 'lattice'), lattice = logical(opts.lattice); opts = rmfield(opts, 'lattice'); end
+   if isfield(opts, 'sinh'), sinhmode = sinhvalue(name, opts.sinh); opts = rmfield(opts, 'sinh'); end
+end
+function v = sinhvalue(name, v)
+   if ~((ischar(v) || isstring(v)) && any(strcmp(v, {'saddle', 'origin'}))), error('CGF:opts', '%s: sinh must be ''saddle'' or ''origin''', name); end
+   v = char(v);
+end
+function [order, lower, signs, lattice, sinhmode, nG, used] = condopts(name, varargin)
+   order = 3; lower = false; signs = []; lattice = false; sinhmode = 'saddle'; nG = 64; used = {};
+   if mod(numel(varargin), 2), error('CGF:opts', '%s: options must be name-value pairs', name); end
+   for i = 1:2:numel(varargin)
+      key = lower_(varargin{i}); val = varargin{i+1}; used{end+1} = key; %#ok<AGROW>
+      switch key
+         case 'order', order = val;
+         case 'lower', lower = logical(val);
+         case 'signs', signs = val;
+         case 'lattice', lattice = logical(val);
+         case 'sinh', sinhmode = sinhvalue(name, val);
+         case 'ng', nG = val;
+         otherwise, error('CGF:opts', '%s: unknown option %s', name, varargin{i});
+      end
+   end
+   if ~(isscalar(order) && order >= 1 && order == round(order)), error('CGF:order', '%s: order must be a positive integer', name); end
+   if ~(isscalar(nG) && nG >= 8 && nG == round(nG)), error('CGF:opts', '%s: nG must be an integer of at least 8', name); end
+end
+function A = condset(name, A, d)
+   % A as a sorted row of distinct indices in 1:d
+   A = reshape(A, 1, []);
+   if isempty(A) || ~isnumeric(A) || any(A ~= round(A)) || any(A < 1 | A > d) || numel(unique(A)) ~= numel(A)
+      error('CGF:A', '%s: A must be a nonempty set of distinct indices in 1:%d', name, d);
+   end
+   A = sort(double(A));
+end
+function sg = condsigns(name, d, A, lower, signs)
+   % the sign vector of the tail components for lower and mixed tails (ones on B)
+   sg = ones(1, d);
+   if isempty(signs)
+      if lower, sg(A) = -1; end
+      return
+   end
+   if numel(signs) ~= numel(A), error('CGF:signs', '%s: signs must have one entry per tail component (%d)', name, numel(A)); end
+   if ~all(signs(:) == 1 | signs(:) == -1), error('CGF:signs', '%s: signs must be +-1', name); end
+   sg(A) = reshape(signs, 1, []);
 end
 function sg = cornersigns(d, lower, signs)
    if ~isempty(signs), sg = reshape(signs, 1, []); elseif lower, sg = -ones(1, d); else, sg = ones(1, d); end
