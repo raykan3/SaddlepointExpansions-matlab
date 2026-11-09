@@ -37,6 +37,13 @@ classdef CGF
 %   corrected P(S_A >= k_A | S_B = k_B), and P(S_A = k_A | S_B = k_B); without conditioning,
 %   tailprob(K, k, 'lattice', true) for P(S >= k) and density(K, k, 'lattice', true) for
 %   P(S = k); 'sinh', 'saddle' (default) or 'origin' for the expansion of s/(2 sinh(s/2)).
+%   Quantiles of the expansions, by Newton's method in saddlepoint space:
+%      r = quantile(K, p, 'order', 3)        the q with P(X <= q) = p ('lower', false: P(X >= q));
+%                                            r.q, r.tau, r.F, r.iterations, r.status
+%      r = ratio_quantile(K, p, 'order', 3)  the r with P(X_1/X_2 <= r) = p; r.r, r.shat, ...
+%   Normalized densities: 'normalize', true in density, ratio_density (one ratio) and
+%   studentized_density divides the expansion of every order by its mass (r.info.mass), computed
+%   by quadrature in saddlepoint space; 'normalize', r.info.mass reuses it.
 %   Studentized means Q = X/sqrt(Y), Y > 0, K the joint cgf of (X, Y) (dimension 2; Bao, Broda
 %   and Kan, "Inversion formulas and saddlepoint expansions for Studentized means"):
 %      r = studentized_density(K, q, 'order', 3)   density of Q at q; r.f(M)
@@ -218,8 +225,32 @@ methods
       %   saddlepoint expansions of arbitrary order", without conditioning components); it is
       %   computed as conditional_density with A = 1:d, in whitened coordinates in any dimension,
       %   and the numbers are the same.
+      %   r = density(K, x, 'order', M, 'normalize', true) divides the expansion of every order M
+      %   by its total mass c_M = int f_M(x) dx (Daniels's normalization), returned in r.info.mass;
+      %   the integral is computed in saddlepoint space, x = K'(s), dx = det K''(s) ds, so that the
+      %   saddlepoint is known at every quadrature node and no saddlepoint equation is solved there:
+      %   by adaptive Gauss-Kronrod quadrature (the algorithm of QuadGK.jl, relative tolerance
+      %   1e-12 in one dimension and 1e-9 in more) over the domain of K, nested over the
+      %   coordinates in more than one dimension (each inner line centred at the regression of the
+      %   inner coordinates on the outer ones under K''(0)), the tails truncated where the leading
+      %   term has fallen by e^-50 relative to its largest value.  The masses do not depend on x:
+      %   'normalize', r.info.mass (a numeric vector) reuses them.  One quadrature costs a few
+      %   hundred evaluations of the expansion in one dimension and the square of that in two; in
+      %   more dimensions it is expensive.  For the normal distribution c_M = 1; for the gamma
+      %   distribution with shape a, c_1 = Gamma(a) e^a a^(1/2-a)/sqrt(2 pi), and the normalized
+      %   expansion of every order is exact.
       [order, ~, ~, opts] = parseopts('density', obj.d, varargin{:});
       [lattice, ~, opts] = latticeopts('density', opts);
+      [nrm, opts] = normopts('density', opts);
+      if ~isequal(nrm, false)
+         if lattice, error('CGF:normalize', 'density: normalize is for continuous variables'); end
+         if isequal(nrm, true), mass = mass_density(obj, order); else, mass = double(nrm(:)); end
+         if numel(mass) < order, error('CGF:normalize', 'density: normalize must be true or a vector of %d masses', order); end
+         args = [fieldnames(opts)'; struct2cell(opts)'];
+         r = density(obj, x, 'order', order, args{:});
+         r.f = r.f./mass(1:order); r.info.mass = mass(1:order);
+         return
+      end
       x = reshape(x, 1, []);
       if numel(x) ~= obj.d, error('CGF:x', 'density: x must have length %d', obj.d); end
       maxdeg = 2*order + 1; Kf = cgf_kfun(obj, maxdeg);
@@ -254,7 +285,25 @@ methods
       %   K is the cgf of (X_1..X_d, Y_1..Y_d) (dimension 2d), or of (X_1..X_d, Y) (dimension
       %   d + 1) for a common denominator Y.  d = 1: Rice's expansion (Corollary 5); d >= 2:
       %   Theorem 4 and Corollary 3.  r.f(M), M = 1..order; r.shat the saddlepoint of K_W.
+      %   For one ratio, 'normalize', true divides the expansion of every order by its total mass,
+      %   returned in r.info.mass ('normalize', r.info.mass reuses it): the integral over r is
+      %   computed in saddlepoint space, over the saddlepoint shat along the curve
+      %   s K_1 + t K_2 = 0, t = -r shat, on which r = K_1/K_2 (see ratio_quantile), with
+      %   dr = (dr/dshat) dshat, by adaptive Gauss-Kronrod quadrature (relative tolerance 1e-10),
+      %   the tails truncated where the leading term has fallen by e^-50; each node gives its t by
+      %   a one-dimensional Newton iteration on the curve, and no saddlepoint equation in r is
+      %   solved.
       [order, ~, ~, opts] = parseopts('ratio_density', numel(r0), varargin{:});
+      [nrm, opts] = normopts('ratio_density', opts);
+      if ~isequal(nrm, false)
+         if numel(r0) ~= 1, error('CGF:normalize', 'ratio_density: normalize is for one ratio'); end
+         if isequal(nrm, true), mass = mass_ratio(ratiocgf(obj, 1, 'ratio_density'), order); else, mass = double(nrm(:)); end
+         if numel(mass) < order, error('CGF:normalize', 'ratio_density: normalize must be true or a vector of %d masses', order); end
+         args = [fieldnames(opts)'; struct2cell(opts)'];
+         r = ratio_density(obj, r0, 'order', order, args{:});
+         r.f = r.f./mass(1:order); r.info.mass = mass(1:order);
+         return
+      end
       r0 = reshape(r0, 1, []); d = numel(r0); K2 = ratiocgf(obj, d, 'ratio_density');
       if d == 1 && ~isfield(opts, 'general')          % 'general', true: the d-ratio code for d = 1
          KW = linear_combination(K2, [1; -r0]);
@@ -358,6 +407,50 @@ methods
          'info', struct('kappa', ci.kappaf, 'kappa_den', ci.kappaB));
    end
 
+   %---------------------------------------------------------------- quantiles
+   function r = quantile(obj, p, varargin)
+      %QUANTILE the quantile of the saddlepoint distribution function of order 'order' of a
+      %   univariate random variable with cumulant generating function K (Hauschildt-Robinson
+      %   expansion, tailprob): the point r.q with P(X <= q) = p under the expansion ('lower',
+      %   false: P(X >= q) = p, for upper quantiles of small probability, which are then computed
+      %   directly).  r = quantile(K, p, 'order', 3, 'lower', true, 'tol', 1e-12).
+      %   The root search runs in saddlepoint space: the point is parametrized by its saddlepoint,
+      %   x = K'(s), so that each iterate gives the point and its saddlepoint at once and no
+      %   saddlepoint equation is solved; the derivative of the distribution function in s is the
+      %   density expansion of the same order times K''(s), and the Newton iteration starts at
+      %   s = 0 and is safeguarded by bracketing and bisection, with steps limited to four standard
+      %   deviations and pulled back into the domain of K.  Converged when the distribution
+      %   function is within tol*min(p, 1-p) of p.  r.q; r.tau, the saddlepoint of q; r.F, the
+      %   value of the expansion there; r.iterations; r.status ('ok', or 'bracket at rounding
+      %   level' when the bracket of the root has shrunk to rounding level before the tolerance
+      %   was met).  For continuous variables (the expansion of a lattice variable is a step
+      %   function of k).  A method of the class CGF, so that quantile of a numeric array is
+      %   MATLAB's own.
+      [order, lower, tol] = quantopts('quantile', varargin{:});
+      if obj.d ~= 1, error('CGF:dim', 'quantile: K must be univariate (see ratio_quantile and studentized_quantile)'); end
+      if ~(isnumeric(p) && isscalar(p) && isreal(p) && p > 0 && p < 1), error('CGF:prob', 'quantile: p must be in (0, 1)'); end
+      r = quantile_uni(obj, double(p), order, lower, tol);
+   end
+   function r = ratio_quantile(obj, p, varargin)
+      %RATIO_QUANTILE the quantile of the saddlepoint distribution function of order 'order' of
+      %   the ratio R = X_1/X_2, X_2 > 0, with K the joint cumulant generating function of
+      %   (X_1, X_2) (ratio_tailprob): r.r with P(R <= r) = p under the expansion ('lower', false:
+      %   P(R >= r) = p).  r = ratio_quantile(K, p, 'order', 3, 'lower', true, 'tol', 1e-12).
+      %   The search runs in saddlepoint space, over the saddlepoint shat of W = X_1 - r X_2: the
+      %   saddlepoints of all r lie on the curve s K_1(s,t) + t K_2(s,t) = 0, t = -r shat, on which
+      %   r = K_1/K_2, so that each trial shat gives its t (by a one-dimensional Newton iteration
+      %   on the curve, continued from the previous iterate), its r and its distribution function
+      %   directly, without the saddlepoint equation of W for a trial r.  The Newton iteration in
+      %   shat uses the derivative f_R(r) dr/dshat, with the density expansion of the ratio of the
+      %   same order (ratio_density) and dr/dshat along the curve, safeguarded as in quantile.
+      %   r.r; r.shat, the saddlepoint; r.F, the value of the expansion at r.r; r.iterations;
+      %   r.status.
+      [order, lower, tol] = quantopts('ratio_quantile', varargin{:});
+      if obj.d ~= 2, error('CGF:dim', 'ratio_quantile: K must be the joint cumulant generating function of the numerator and the denominator (d = 2)'); end
+      if ~(isnumeric(p) && isscalar(p) && isreal(p) && p > 0 && p < 1), error('CGF:prob', 'ratio_quantile: p must be in (0, 1)'); end
+      r = quantile_ratio(obj, double(p), order, lower, tol);
+   end
+
    %---------------------------------------------------------------- Studentized means
    function sd = studentized_saddlepoint(obj, q)
       %STUDENTIZED_SADDLEPOINT the saddlepoint (s, t, v) of the expansions for Q = X/sqrt(Y) at q:
@@ -388,23 +481,37 @@ methods
       %   1e10), and 'precision', 'dd' computes in double-double from the start.  The refinement
       %   evaluates K on double-double series (CGF/taylordd), so K must be written with operations
       %   that tpsdd supports; if it fails, the status is 'refinement failed'.
+      %   'normalize', true divides the expansion of every order by its total mass, returned in
+      %   r.info.mass ('normalize', r.info.mass reuses it).  The integral over q is computed in
+      %   saddlepoint space, over shat along the locus s K_s + 2 t K_t = 0 (studentized_locus), with
+      %   dq = (dq/dshat) dshat, by adaptive Gauss-Kronrod quadrature (relative tolerance 1e-9) on
+      %   the two sides of shat = 0 (where t = 0), the tails truncated where the leading term has
+      %   fallen by e^-50; each node gives t by the one-dimensional Newton iteration of the locus,
+      %   so that no saddlepoint equation in q is solved.  The expansions at the nodes are refined
+      %   where they cancel, as with 'refine', true, which is what makes the masses of the higher
+      %   orders meaningful in the tails, where |t| is large.
       studcheck(obj, 'studentized_density');
-      [order, ~, saddle, ~, refine, prec] = studopts('studentized_density', varargin{:});
+      [order, ~, saddle, ~, refine, prec, nrm] = studopts('studentized_density', varargin{:});
       q = scalarq(q, 'studentized_density');
+      if ~isequal(nrm, false)
+         if isequal(nrm, true), mass = mass_stud(obj, order); else, mass = double(nrm(:)); end
+         if numel(mass) < order, error('CGF:normalize', 'studentized_density: normalize must be true or a vector of %d masses', order); end
+      end
       if strcmp(prec, 'dd')
          if isempty(saddle), saddle = stud_saddle(obj, q); end
          r = stud_density_dd(obj, q, order, saddle);
-         return
-      end
-      r = stud_density(obj, q, order, saddle);
-      if refine && r.info.kappa(end) > 1e6
-         % the terms cancel strongly: repeat the computation in double-double arithmetic
-         try
-            r = stud_density_dd(obj, q, order, r.saddle);
-         catch err
-            r.status = 'refinement failed'; r.info.refine_error = err.message;
+      else
+         r = stud_density(obj, q, order, saddle);
+         if refine && r.info.kappa(end) > 1e6
+            % the terms cancel strongly: repeat the computation in double-double arithmetic
+            try
+               r = stud_density_dd(obj, q, order, r.saddle);
+            catch err
+               r.status = 'refinement failed'; r.info.refine_error = err.message;
+            end
          end
       end
+      if ~isequal(nrm, false), r.f = r.f./mass(1:order); r.info.mass = mass(1:order); end
    end
    function r = studentized_tailprob(obj, q, varargin)
       %STUDENTIZED_TAILPROB saddlepoint expansions of orders 1..order of P(Q >= q) for
@@ -522,8 +629,8 @@ function q = scalarq(q, name)
    if ~(isnumeric(q) && isscalar(q) && isreal(q) && isfinite(q)), error('CGF:q', '%s: q must be a finite real scalar', name); end
    q = double(q);
 end
-function [order, lower, saddle, tol, refine, prec] = studopts(name, varargin)
-   order = 3; lower = false; saddle = []; tol = 1e-10; refine = true; prec = 'double';
+function [order, lower, saddle, tol, refine, prec, nrm] = studopts(name, varargin)
+   order = 3; lower = false; saddle = []; tol = 1e-10; refine = true; prec = 'double'; nrm = false;
    if mod(numel(varargin), 2), error('CGF:opts', '%s: options must be name-value pairs', name); end
    for i = 1:2:numel(varargin)
       switch lower_(varargin{i})
@@ -535,6 +642,7 @@ function [order, lower, saddle, tol, refine, prec] = studopts(name, varargin)
          case 'precision'
             prec = lower_(varargin{i+1});
             if ~any(strcmp(prec, {'double', 'dd'})), error('CGF:opts', '%s: precision must be ''double'' or ''dd''', name); end
+         case 'normalize', nrm = normvalue(name, varargin{i+1});
          otherwise, error('CGF:opts', '%s: unknown option %s', name, varargin{i});
       end
    end
@@ -549,6 +657,17 @@ end
 function v = sinhvalue(name, v)
    if ~((ischar(v) || isstring(v)) && any(strcmp(v, {'saddle', 'origin'}))), error('CGF:opts', '%s: sinh must be ''saddle'' or ''origin''', name); end
    v = char(v);
+end
+function [nrm, opts] = normopts(name, opts)
+   % the option normalize, removed from the engine options
+   nrm = false;
+   if isfield(opts, 'normalize'), nrm = normvalue(name, opts.normalize); opts = rmfield(opts, 'normalize'); end
+end
+function v = normvalue(name, v)
+   % true or false (logical), or a numeric vector of masses
+   if islogical(v) && isscalar(v), return, end
+   if isnumeric(v) && ~isempty(v) && all(isfinite(v(:))) && all(v(:) > 0), v = double(v(:)); return, end
+   error('CGF:normalize', '%s: normalize must be true, false or a vector of masses', name);
 end
 function [order, lower, signs, lattice, sinhmode, nG, used] = condopts(name, varargin)
    order = 3; lower = false; signs = []; lattice = false; sinhmode = 'saddle'; nG = 64; used = {};
@@ -586,6 +705,20 @@ function sg = condsigns(name, d, A, lower, signs)
    if numel(signs) ~= numel(A), error('CGF:signs', '%s: signs must have one entry per tail component (%d)', name, numel(A)); end
    if ~all(signs(:) == 1 | signs(:) == -1), error('CGF:signs', '%s: signs must be +-1', name); end
    sg(A) = reshape(signs, 1, []);
+end
+function [order, lower, tol] = quantopts(name, varargin)
+   order = 3; lower = true; tol = 1e-12;
+   if mod(numel(varargin), 2), error('CGF:opts', '%s: options must be name-value pairs', name); end
+   for i = 1:2:numel(varargin)
+      switch lower_(varargin{i})
+         case 'order', order = varargin{i+1};
+         case 'lower', lower = logical(varargin{i+1});
+         case 'tol', tol = varargin{i+1};
+         otherwise, error('CGF:opts', '%s: unknown option %s', name, varargin{i});
+      end
+   end
+   if ~(isscalar(order) && order >= 1 && order == round(order)), error('CGF:order', '%s: order must be a positive integer', name); end
+   if ~(isscalar(tol) && tol > 0), error('CGF:opts', '%s: tol must be positive', name); end
 end
 function sg = cornersigns(d, lower, signs)
    if ~isempty(signs), sg = reshape(signs, 1, []); elseif lower, sg = -ones(1, d); else, sg = ones(1, d); end
