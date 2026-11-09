@@ -17,7 +17,7 @@
 \title{SaddlepointExpansions for MATLAB\\[4pt]
 \large User manual}
 \author{Simon A. Broda and Raymond Kan}
-\date{Version 0.2.3, November 2026}
+\date{Version 0.3.0, November 2026}
 
 \begin{document}
 \sloppy
@@ -45,7 +45,15 @@ function) and Rice (density of a ratio).
 It also implements the expansions of Bao, Broda and Kan, ``Inversion formulas and saddlepoint
 expansions for Studentized means'', for the density, the distribution function and the quantiles of
 a Studentized mean $Q=X/\sqrt{Y}$ with $Y>0$, from the joint cumulant generating function of
-$(X,Y)$ (\S\,\ref{sec:stud}).
+$(X,Y)$ (\S\,\ref{sec:stud}), and those of Broda and Kan, ``Conditional and lattice saddlepoint
+expansions of arbitrary order'', for the conditional distribution function
+$\pr(X_{\mathcal A}\geq x_{\mathcal A}\mid X_{\mathcal B}=x_{\mathcal B})$ and the conditional density
+of every order, for any numbers of tail and conditioning components and for continuous and lattice
+variables, with the expansions of $\pr(S\geq k)$ and $\pr(S=k)$ for sums of integer-valued vectors as
+the case without conditioning (\S\S\,\ref{sec:cond} and~\ref{sec:lattice}). Quantiles of the
+expansions and normalized densities are computed in saddlepoint space, with the point
+parametrized by its saddlepoint, so that no saddlepoint equation is solved on the way
+(\S\S\,\ref{sec:quant} and~\ref{sec:norm}).
 The approximation of order $M$ has relative error $O(n^{-M})$, where $n$ is the large parameter (a
 sample size, a number of degrees of freedom).
 
@@ -66,16 +74,19 @@ interface and share a set of reference values, on which they agree to about $10^
 Theorem and corollary numbers refer to the version of the paper of November 2026: Theorem~1
 (orthant probability), Theorem~2 (inclusion--exclusion), Theorem~3 (density), Theorem~4 and
 Corollary~3 (densities of ratios), Corollaries~1, 2, 4 and~5 (Daniels, Hauschildt--Robinson, the
-distribution function of a ratio, Rice).
+distribution function of a ratio, Rice). For the conditional paper they refer to its version of
+9 November 2026: Theorem~3 (the conditional distribution function), Remark~1 (saddlepoints with
+negative tail components), Theorem~4 (the conditional density), Theorem~5 (lattice variables) and
+Corollary~1 (lattice variables without conditioning), Section~5.2 (the canonical coordinates).
 
-\paragraph{Requirements.} MATLAB (the package was tested with R2025b) and the
+\paragraph{Requirements.} MATLAB (the package was tested with R2025b and R2026b) and the
 Statistics and Machine Learning Toolbox, whose \prog{normcdf} and \prog{normpdf} are used by the
 univariate engine. Nothing else is needed.
 
 \paragraph{Installation.} Copy the folder anywhere and run \prog{spx\_setup}, which adds the folder
 and its \prog{engine} subfolder to the path. \prog{help SaddlepointExpansions} lists the functions,
 \prog{examples/demo\_spx.m} runs the examples of this manual in a few seconds and
-\prog{tests/test\_spx.m} the tests of \S\,\ref{sec:valid} in about a minute.
+\prog{tests/test\_spx.m} the tests of \S\,\ref{sec:valid} in a few minutes.
 
 \section{A first example}\label{sec:first}
 
@@ -170,6 +181,10 @@ constructor & distribution\\
 \prog{wishart\_diag\_cgf(V, n)} & the diagonal of a Wishart matrix $W_d(n,V)$\\
 \prog{common\_component\_cgf(m, lam)} & $Q_j=X_j+X_0$, $j=1,\ldots,d$, with independent $X_i\sim\chi^2_{m_i}(\lambda_i)$, \prog{m = [m\_1 ... m\_d m\_0]}\\
 \prog{uniform\_cgf(a, b)} & uniform on $[a,b]$ (default $[-1,1]$)\\
+\prog{poisson\_cgf(lam)} & Poisson with mean $\lambda$, $K(t)=\lambda(e^t-1)$ (a lattice variable)\\
+\prog{binomial\_cgf(m, p)} & binomial with $m$ trials, $K(t)=m\log(1-p+pe^t)$ (lattice)\\
+\prog{negative\_binomial\_cgf(r, p)} & the number of failures before the $r$-th success, $K(t)=r\log p-r\log\{1-(1-p)e^t\}$, $t<-\log(1-p)$; $r$ need not be an integer (lattice)\\
+\prog{logistic\_regression\_cgf(X, 'beta', b)} & the sufficient statistic $S=\sum_iy_ix_i$ of a logistic regression with design matrix $X$ (rows $x_i\tp$), $K(t)=\sum_i[\log\{1+e^{x_i\tp(\beta+t)}\}-\log(1+e^{x_i\tp\beta})]$, at $\beta=$ \prog{b} (default zero); lattice for integer covariates\\
 \bottomrule
 \end{longtable}
 
@@ -454,6 +469,229 @@ distribution function is much less affected; in double-double it costs a few sec
 integrals $I_m$, which are computed in variable precision. A refined density of order six costs about
 ten seconds.
 
+\section{Conditional distributions}\label{sec:cond}
+
+Let $\mathcal A\subseteq\{1,\ldots,d\}$ hold the indices of the components whose tail is wanted
+and $\mathcal B$ the others, on which the distribution is conditioned. The expansions of Broda and
+Kan, ``Conditional and lattice saddlepoint expansions of arbitrary order'', are
+\begin{lstlisting}
+r = conditional_tailprob(K, x, A, 'order', M)       % P(X_A >= x_A | X_B = x_B)
+r = conditional_tailprob(K, x, A, 'order', M, 'lower', true)   % <= x_A
+r = conditional_tailprob(K, x, A, 'order', M, 'signs', s)      % a mixed corner
+r = conditional_density(K, x, A, 'order', M)        % f(x_A | x_B)
+\end{lstlisting}
+where \prog{x} is the full point of length $d$ and \prog{A} an index or a vector of indices. The
+numerator of the conditional probability is the orthant-probability integral with the poles in the
+components of $\mathcal A$ only, expanded to the terms of orders $n^{-m/2}$, $m\leq 2M-1$, and the
+denominator is the density expansion of $X_{\mathcal B}$ at its own saddlepoint with $M$ terms, so
+that \prog{r.F(M)} has relative error $O(n^{-M})$ (Theorem~3 of the paper). The conditional density
+\prog{r.f(M)} is the ratio of the density expansions of $X$ and of $X_{\mathcal B}$, both with $M$
+terms (Theorem~4); its leading term is the double saddlepoint approximation of Barndorff-Nielsen and
+Cox (1979), and unlike the distribution function it holds for saddlepoints in any orthant. With
+$\mathcal B$ empty the expansions are those of \prog{tailprob} and \prog{density}.
+
+With one tail component and one conditioning variable the leading term,
+\prog{r.info.Fp(1)}, is the conditional analogue $(\hat u/\hat z)\,e^{(\hat u^2-\hat w^2)/2}\,\bar\Phi(\hat u)$
+of the approximation of Hauschildt and Robinson, in the notation of Skovgaard (1987), and the
+approximation of order one adds the terms of order $n^{-1/2}$ to it. The expansion has no singular
+terms, so that nothing special happens where the saddlepoint of a tail component vanishes, as it
+does for Skovgaard's formula at the median. When the saddlepoint has negative components in
+$\mathcal A$, the probability is written by the inclusion--exclusion identity of Remark~1 of the
+paper as a signed sum of conditional probabilities given the same $X_{\mathcal B}$, of the tail
+components that are kept, some of them negated, with the others marginalized, every term with its
+own saddlepoint (\S\,\ref{sec:bgcond}); \prog{'lower'} and \prog{'signs'} reflect tail components
+as in \prog{tailprob}.
+
+\prog{r.tau} is the saddlepoint of $K$ at $x$ and \prog{r.taut} that of the marginal of
+$X_{\mathcal B}$, embedded as $(0_{\mathcal A},\tilde s_{\mathcal B})$. \prog{r.info.Fp(j+1)},
+$j=0,\ldots,2M-1$, holds the expansion with the terms of the numerator up to $n^{-j/2}$ and
+$\lfloor j/2\rfloor+1$ terms of the denominator, so that \prog{r.F(M)} is \prog{r.info.Fp(2M)};
+\prog{r.info.kappa} and \prog{r.info.kappa\_den} are the cancellation indicators of the numerator,
+the terms of the inclusion--exclusion included, and of the denominator; \prog{r.info.err} is the
+change of \prog{r.F} with half the quadrature nodes of the orthant integrals, whose number per panel
+is the option \prog{'nG'} (default 64). \prog{r.status} is \prog{'ok'}, or reports a large
+cancellation or an integration not resolved.
+
+\paragraph{Example: a gamma sum given its total.} Let $U$ and $V$ be independent
+$\mathrm{Gamma}(16)$ variables and $X=(U,U+V)$. Given $X_2=32$, $X_1/32$ has the
+$\mathrm{Beta}(16,16)$ distribution, so that the conditional probabilities are known exactly:
+\begin{lstlisting}
+K = CGF(@(t) -16*log(1 - t(1) - t(2)) - 16*log(1 - t(2)), 2, ...
+        'domain', @(t) t(1) + t(2) < 1 && t(2) < 1);
+x1 = 32*betaincinv(0.9, 16, 16);                   % the 90% point, 19.60597967
+r = conditional_tailprob(K, [x1 32], 1, 'order', 5);
+r.F'      % 0.1000254409 0.0999930422 0.0999999444 0.1000000055 0.1000000001
+f = conditional_density(K, [x1 32], 1, 'order', 5);
+\end{lstlisting}
+The relative errors of orders one to five are
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+order & 1 & 2 & 3 & 4 & 5\\
+\midrule
+distribution function & $2.5\times10^{-4}$ & $-7.0\times10^{-5}$ & $-5.6\times10^{-7}$ & $5.5\times10^{-8}$ & $1.3\times10^{-9}$\\
+density & $7.8\times10^{-3}$ & $-5.3\times10^{-5}$ & $-1.1\times10^{-6}$ & $1.5\times10^{-8}$ & $1.4\times10^{-9}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+These are cells of the first table of the paper, which the tests recompute in full
+(\S\,\ref{sec:valid}).
+
+\paragraph{Computation and cost.} The Taylor coefficients are generated by Taylor-mode
+differentiation directly in the canonical coordinates of Section~5.2 of the paper, in which the tail
+components are uncorrelated with the conditioning components under the tilted distribution and the
+latter are whitened (\S\,\ref{sec:bgcond}). The conditional probability does not depend on the
+coordinates, but the terms do: in the original coordinates they cancel by up to sixteen orders of
+magnitude in the examples of the paper, in the canonical ones they do not. With one tail component
+every integral of the expansion is one-dimensional, whatever the number of conditioning variables,
+and the cost is that of the Taylor coefficients: a conditional probability of order five in three
+dimensions takes a fraction of a second. With two or three tail components the orthant integrals are
+computed on a sequentially conditioned grid, which costs about a second at order three. The engine
+program is \prog{spa\_cond} (\S\,\ref{sec:engine}), the counterpart of the program of the same name
+that accompanies the paper.
+
+\section{Lattice variables}\label{sec:lattice}
+
+For an integer-valued vector $S$ and an integer point $k$, the option \prog{'lattice', true} gives
+the continuity-corrected expansions of $\pr(S\geq k)$ and the expansions of $\pr(S=k)$ (Corollary~1
+of the conditional paper, its case without conditioning components), and, conditioned on other
+components, those of $\pr(S_{\mathcal A}\geq k_{\mathcal A}\mid S_{\mathcal B}=k_{\mathcal B})$ and
+$\pr(S_{\mathcal A}=k_{\mathcal A}\mid S_{\mathcal B}=k_{\mathcal B})$ (Theorem~5):
+\begin{lstlisting}
+r = tailprob(K, k, 'order', M, 'lattice', true)                  % P(S >= k)
+r = tailprob(K, k, 'order', M, 'lattice', true, 'lower', true)   % P(S <= k)
+r = density(K, k, 'order', M, 'lattice', true)                   % P(S = k)
+% P(S_A >= k_A | S_B = k_B) and P(S_A = k_A | S_B = k_B):
+r = conditional_tailprob(K, k, A, 'order', M, 'lattice', true)
+r = conditional_density(K, k, A, 'order', M, 'lattice', true)
+\end{lstlisting}
+In the distribution function the saddlepoint is taken at the continuity-corrected point
+$k_{\mathcal A}-1/2$ in the tail components, and the integrand carries the amplitude
+$\prod_{j\in\mathcal A}s_j/\{2\sinh(s_j/2)\}$, which is expanded about the saddlepoint
+(\prog{'sinh', 'saddle'}, the default), so that the lattice factor is exact at the saddlepoint at
+every order. The option \prog{'sinh', 'origin'} instead expands $s/\{2\sinh(s/2)\}=1-s^2/24+7s^4/5760-\cdots$
+about zero and keeps the terms up to $s^{2M-2}$ in the approximation of order $M$, as Kolassa (2003,
+2006) does; the two agree closely when the saddlepoint is small. The probability $\pr(S=k)$ is the
+density expansion at the uncorrected point. The components in $\mathcal B$ may be lattice or
+continuous. In one dimension the approximation of order one, with the terms of orders $n^0$ and
+$n^{-1/2}$, has the relative error $O(n^{-1})$ of the continuity-corrected approximations of
+Daniels (1987). Lower tails and saddlepoints with negative components use the reflection
+$\pr(S_j\leq k_j-1)=\pr(-S_j\geq-k_j+1)$. Where the continuity-corrected point lies outside the
+interior of the convex hull of the support, as for $\pr(S\geq0)$ of a count, there is no saddlepoint
+(the probability is zero or one) and an error with identifier \prog{'spa\_cond:support'} is raised.
+\prog{tailprob} and \prog{conditional\_tailprob} with $\mathcal A=\{1,\ldots,d\}$ make the same
+computation and return the same numbers; \prog{r.info} holds \prog{Fp}, \prog{kappa}, \prog{err} and
+\prog{nG}.
+
+\paragraph{Examples.} For the Poisson distribution with mean five,
+\begin{lstlisting}
+r = tailprob(poisson_cgf(5), 11, 'order', 4, 'lattice', true);
+r.F'      % 0.01373079 0.01369706 0.01369526 0.01369527   (exact 0.01369527)
+f = density(poisson_cgf(5), 11, 'order', 4, 'lattice', true);
+f.f'      % 0.00830484 0.00824192 0.00824216 0.00824218   (exact 0.00824218)
+\end{lstlisting}
+with relative errors $2.6\times10^{-3}$, $1.3\times10^{-4}$, $-7.3\times10^{-7}$ and
+$-1.3\times10^{-7}$ for the tail. The standard conditional case is exact inference in a logistic
+regression: with $y_i$ independent Bernoulli variables with $\log\{p_i/(1-p_i)\}=x_i\tp\beta$, the
+sufficient statistic $S=\sum_iy_ix_i$ has the cumulant generating function of
+\prog{logistic\_regression\_cgf}, and the conditional distribution of one of its components given
+the others does not depend on the coefficients of the conditioning components. For thirty
+observations with an intercept and two integer covariates, under $\beta=0$,
+\begin{lstlisting}
+X = [ones(30, 1) mod((0:29)', 5) mod((0:29)', 3)];
+K = logistic_regression_cgf(X);
+r = conditional_tailprob(K, [15 37 15], 2, 'order', 4, 'lattice', true);
+r.F'      % 0.05374981 0.05244006 0.05241372 0.05241465   (exact 0.05242119)
+p = conditional_density(K, [15 37 15], 2, 'order', 4, 'lattice', true);
+\end{lstlisting}
+where the exact values come from the joint distribution of $S$ by dynamic programming; the errors
+relative to $\min(P,1-P)$ are $2.5\times10^{-2}$, $3.6\times10^{-4}$, $-1.4\times10^{-4}$ and
+$-1.2\times10^{-4}$.
+
+\section{Quantiles}\label{sec:quant}
+
+\begin{lstlisting}
+r = quantile(K, p, 'order', M)                     % P(X <= q) = p under the expansion
+r = quantile(K, p, 'order', M, 'lower', false)     % P(X >= q) = p
+r = ratio_quantile(K, p, 'order', M)               % P(X_1/X_2 <= r) = p, X_2 > 0
+\end{lstlisting}
+\prog{quantile} returns the point at which the saddlepoint distribution function of order $M$ of
+a univariate variable (the Hauschildt--Robinson expansion of \prog{tailprob}) equals $p$; with
+\prog{'lower', false} the upper tail is used, so that upper quantiles of small probability are
+computed directly. The search runs in saddlepoint space: the point is parametrized by its
+saddlepoint, $x=K'(s)$, so that each iterate comes with its saddlepoint and no saddlepoint equation
+is solved. Newton's method in $s$ starts at $s=0$ and uses the derivative $f_M(K'(s))K''(s)$, the
+density expansion of the same order times $K''(s)$; it is safeguarded by bracketing and bisection,
+its steps are limited to four standard deviations $K''(s)^{-1/2}$ and pulled back into the domain
+of $K$, and it stops when the distribution function is within \prog{tol}$\,\min(p,1-p)$ of $p$
+(\prog{'tol'}, default $10^{-12}$). \prog{r.q} is the quantile, \prog{r.tau} its saddlepoint,
+\prog{r.F} the value of the expansion there, \prog{r.iterations} the number of Newton steps and
+\prog{r.status} \prog{'ok'}, or \prog{'bracket at rounding level'} when the bracket of the root has
+shrunk to rounding level first. The expansion of a lattice variable is a step function of $k$, and
+\prog{quantile} is meant for continuous variables. It is a method of the class \prog{CGF}, so that
+\prog{quantile} of a numeric array is still MATLAB's own.
+
+For a ratio $R=X_1/X_2$, \prog{K} is the joint cumulant generating function of $(X_1,X_2)$ and the
+parameter is the saddlepoint $\hat s$ of $W=X_1-rX_2$. The saddlepoints of all $r$ lie on the
+curve $sK_1(s,t)+tK_2(s,t)=0$, $t=-r\hat s$, on which $r=K_1/K_2$ (\S\,\ref{sec:bgspace}); each
+trial $\hat s$ gives its $t$ by a one-dimensional Newton iteration on the curve, continued from the
+previous iterate, and with it $r$ and the distribution function of \prog{ratio\_tailprob}, without
+the saddlepoint equation of $W$ for a trial $r$. The derivative in $\hat s$ is the density expansion
+of the ratio of the same order (\prog{ratio\_density}) times $dr/d\hat s$ along the curve, and the
+iteration is safeguarded as for \prog{quantile}; \prog{r.r} is the quantile and \prog{r.shat} its
+saddlepoint. \prog{studentized\_quantile} (\S\,\ref{sec:stud}) is the counterpart for Studentized
+means.
+\begin{lstlisting}
+q = quantile(gamma_cgf(3), 0.05, 'order', 4);
+q.q                % 0.8176862582 (exact 0.8176914472)
+q = quantile(gamma_cgf(3), 1e-6, 'order', 4, 'lower', false);
+q.q                % 19.1291729204 (exact 19.1291681886)
+\end{lstlisting}
+
+\section{Normalized densities}\label{sec:norm}
+
+\begin{lstlisting}
+r = density(K, x, 'order', M, 'normalize', true)         % r.info.mass: c_1..c_M
+r = density(K, x, 'order', M, 'normalize', r.info.mass)  % reuse them at another point
+r = ratio_density(K, r0, 'order', M, 'normalize', true)  % one ratio
+r = studentized_density(K, q, 'order', M, 'normalize', true)
+\end{lstlisting}
+The option divides the expansion of every order $M$ by its total mass $c_M=\int f_M(x)\,dx$, the
+normalization that Daniels proposed for the leading term; the masses are returned in
+\prog{r.info.mass} and do not depend on the point, so that they can be passed back as
+\prog{'normalize', r.info.mass} (a numeric vector) to normalize at other points without
+recomputing them. The integral is computed in saddlepoint space,
+\[
+c_M=\int f_M(x)\,dx=\int f_M\bigl(K'(s)\bigr)\,\bigl|K''(s)\bigr|\,ds,
+\]
+so that the saddlepoint is known at every quadrature node and no saddlepoint equation is solved
+there. The quadrature is adaptive Gauss--Kronrod with the 15-point Kronrod rule and its embedded
+7-point Gauss rule, the segment with the largest error estimate being bisected until the sum of the
+estimates is below a relative tolerance ($10^{-12}$ in one dimension and $10^{-9}$ in more), which is
+the algorithm and the tolerances of the Julia package, so that the masses agree with its values to
+rounding; the infinite ends are mapped to finite ones by the same changes of variable. The range is
+found from $s=0$ by steps doubling in each direction until the leading term has fallen by $e^{-50}$
+from its largest value, with bisection toward the boundary of the domain and an infinite end where
+the integrand decays only algebraically. In more than one dimension the integral is nested over the
+coordinates, each inner line centred at the regression of the inner coordinates on the outer ones
+under $K''(0)$, and the expansion at a node is evaluated by \prog{spa\_cond} at the known saddlepoint.
+For the normal distribution $c_M=1$; for the gamma distribution with shape $a$,
+$c_1=\Gamma(a)e^aa^{1/2-a}/\sqrt{2\pi}$, and since the bracket of its expansion does not depend on $x$
+the normalized expansion of every order is exact:
+\begin{lstlisting}
+r = density(gamma_cgf(3), 2, 'order', 4, 'normalize', true);
+r.f'          % 0.270670566473 at every order, the exact density
+r.info.mass'  % 1.0280645179 0.9995071702 0.9999038000 1.0000058955
+\end{lstlisting}
+For one ratio the integral over $r$ is computed over the saddlepoint $\hat s$ along the curve of
+\S\,\ref{sec:bgspace}, with $dr=(dr/d\hat s)\,d\hat s$, and for a Studentized mean over $\hat s$ along
+the locus $sK_s+2tK_t=0$, on the two sides of $\hat s=0$ separately (the expansion is not evaluated
+at $\hat t=0$), with $dq=(dq/d\hat s)\,d\hat s$; the expansions at the nodes are refined in
+double-double arithmetic where they cancel, as with \prog{'refine', true}. A normalization costs a
+few hundred evaluations of the expansion in one dimension, under a second, and the square of that in
+two, about twenty seconds; in more dimensions it is expensive. \prog{'normalize'} is for continuous
+variables; \prog{density} raises an error with \prog{'lattice', true}.
+
 \section{Derivatives, saddlepoints and the Taylor class}\label{sec:tps}
 
 \begin{lstlisting}
@@ -618,6 +856,77 @@ exponent $\Psi(s)=\psi(s,t(s))$, $\psi_t(s,t(s))=0$, and amplitudes $H_k(s)$; th
 of $\Psi$ and of the $H_k$ at $\hat s$ are obtained from the Taylor polynomial of $K$ at
 $(\hat s,\hat t)$ by Newton's method and composition on power series, exact up to rounding.
 
+\subsection{Conditional expansions}\label{sec:bgcond}
+
+Let $\mathcal A$, with $a$ elements, be the tail components and $\mathcal B$, with $b=d-a$
+elements, the conditioning ones; let $\hat s$ be the saddlepoint of $K$ at $x$, $K'(\hat s)=x$, and
+$\tilde s_{\mathcal B}$ that of $K_{\mathcal B}(s_{\mathcal B})=K(0_{\mathcal A},s_{\mathcal B})$ at
+$x_{\mathcal B}$. At $\hat s$ let
+\[
+C=K''_{\mathcal{AB}}(K''_{\mathcal{BB}})^{-1},\qquad L_{\mathcal B}L_{\mathcal B}\tp=K''_{\mathcal{BB}},\qquad
+S=K''_{\mathcal{AA}\cdot\mathcal B}=K''_{\mathcal{AA}}-CK''_{\mathcal{BA}}=L_{\mathcal A}L_{\mathcal A}\tp.
+\]
+The canonical coordinates of the paper are $Y_{\mathcal A}=X_{\mathcal A}-CX_{\mathcal B}$ and
+$Y_{\mathcal B}=L_{\mathcal B}^{-1}X_{\mathcal B}$, in which the tilted covariance matrix is
+$\mathrm{diag}(S,I)$; the package whitens the tail components as well, so that the dual variables
+are $s=Tu$ with $s_{\mathcal A}=L_{\mathcal A}^{-\mathsf T}u_{\mathcal A}$ and
+$s_{\mathcal B}=-C\tp L_{\mathcal A}^{-\mathsf T}u_{\mathcal A}+L_{\mathcal B}^{-\mathsf T}u_{\mathcal B}$.
+With $\theta_\nu$ the Taylor coefficients of $K(\hat s+Tu)$ of degrees three and more and $c_{r,\nu}$
+the coefficients of $\Theta(u)^r/r!$, $c_{0,0}=1$, the numerator of the conditional probability with
+the terms of orders $n^{-m/2}$, $m\leq p$, is
+\[
+\mathcal N_p=\frac{\exp\{K(\hat s)-\hat s\tp x\}}{(2\pi)^{b/2}|L_{\mathcal B}|}\sum_{m=0}^{p}\ \sum_{r=0}^{m}\ \sum_{|\nu|=m+2r}c_{r,\nu}\,\He_{\nu_{\mathcal B}}(0)\,J(\nu_{\mathcal A}),
+\]
+\[
+J(\mu)=\frac{1}{(2\pi)^{a/2}|S|^{1/2}}\int_{w\geq0}\ \prod_{i=1}^{a}\He_{\mu_i}\bigl((L_{\mathcal A}^{-1}w)_i\bigr)\,
+\exp\bigl(-\hat s_{\mathcal A}\tp w-w\tp S^{-1}w/2\bigr)\,dw,
+\]
+the Gaussian of the integrand factoring into the tail and the conditioning components in these
+coordinates. The approximation of order $M$ is
+\[
+\pr(X_{\mathcal A}\geq x_{\mathcal A}\mid X_{\mathcal B}=x_{\mathcal B})\approx\mathcal N_{2M-1}/\mathcal D_M,
+\]
+$\mathcal D_M$ the density expansion of $X_{\mathcal B}$ at $x_{\mathcal B}$ with $M$ terms, and the
+conditional density is $f_M(x)/\mathcal D_M$, both density expansions in whitened coordinates. For
+one tail component $J(\mu)$ is a univariate integral, $J(\mu)=\int_0^\infty\He_\mu(v)
+\exp(-\hat uv-v^2/2)\,dv/\sqrt{2\pi}$ with $\hat u=\hat s_{\mathcal A}S^{1/2}$, computed by three
+Gauss--Legendre panels split at $1/(1+\hat u)$ and $4/(1+\hat u)$ on $[0,v_{\max}]$, where $v_{\max}$
+is the point beyond which $v^L\exp(-\hat uv-v^2/2)$, $L=3(2M-1)$ the highest degree, has fallen by
+$e^{-40}$ from its maximum. For more tail components the integral is computed on a grid in
+sequentially conditioned coordinates of $N(0,S)$, each coordinate with three panels placed by its
+own conditional truncation point.
+
+When $\hat s_j<0$ for $j$ in $\mathcal N\subseteq\mathcal A$,
+\[
+\pr(X_{\mathcal A}\geq x_{\mathcal A}\mid X_{\mathcal B}=x_{\mathcal B})=
+\sum_{T\subseteq\mathcal N}(-1)^{|T|}\,\pr\bigl(\tilde X_{(\mathcal A\setminus\mathcal N)\cup T}\geq\tilde x_{(\mathcal A\setminus\mathcal N)\cup T}\bigm| X_{\mathcal B}=x_{\mathcal B}\bigr),
+\]
+where $\tilde X$ and $\tilde x$ are $X$ and $x$ with the components in $T$ negated, the components
+of $\mathcal N\setminus T$ are marginalized ($s_j=0$, not conditioned on), the term without tail
+components is one, and the denominator is the same in every term.
+
+For lattice variables the saddlepoint $\hat s$ is that of the continuity-corrected point,
+$x_{\mathcal A}-1/2$ in the tail components, and the integrand of the numerator carries the
+amplitude $h(s)=\prod_{j\in\mathcal A}g(s_j)$, $g(s)=s/\{2\sinh(s/2)\}$, whose Taylor coefficients
+$\gamma_\mu$ at $\hat s$, in the whitened variables $u_{\mathcal A}$, enter through the products
+$\tilde c_{r,\nu}=\sum_{\mu\leq\nu}c_{r,\nu-\mu}\gamma_\mu$ in place of $c_{r,\nu}$, now with
+$r=0$ and $\nu\ne0$ allowed (the corrections for the lattice). With \prog{'sinh', 'origin'} the
+coefficients are those of the polynomial $\sum_{l\leq M-1}\beta_ls^{2l}$, $\beta_0=1$,
+$\beta_1=-1/24$, $\beta_2=7/5760$, the expansion of $g$ about zero truncated at order $M$.
+
+\subsection{Saddlepoint space}\label{sec:bgspace}
+
+Quantiles and masses are computed with the point parametrized by its saddlepoint. In one dimension
+$x=K'(s)$, and $dx=K''(s)\,ds$; in $d$ dimensions $dx=|K''(s)|\,ds$. For a ratio $R=X_1/X_2$ the
+cumulant generating function of $W=X_1-rX_2$ is $K_W(s)=K(s,-rs)$, and $K_W'(\hat s)=0$ means
+$K_1=rK_2$ at $(\hat s,-r\hat s)$; the saddlepoints of all $r$ therefore lie on the curve
+\[
+G(s,t)=sK_1(s,t)+tK_2(s,t)=0,
+\]
+on which $r=K_1/K_2$, $t'=-G_s/G_t$ and $dr/ds=\{(K_{11}+K_{12}t')K_2-K_1(K_{12}+K_{22}t')\}/K_2^2$. For a
+Studentized mean the curve is the locus $sK_s+2tK_t=0$ of \S\,\ref{sec:stud}, with $v=K_t^{1/2}$ and
+$q=K_s/v$.
+
 \section{Accuracy and precision}\label{sec:precision}
 
 The computations are in double precision, except the double-double refinement of the density of a
@@ -644,7 +953,7 @@ expansions beyond 15 digits. The engine programs accept derivatives in variable 
 
 \section{The engine}\label{sec:engine}
 
-The folder \prog{engine} contains the programs of the paper. They take the derivatives of $K$ from a
+The folder \prog{engine} contains the programs of the papers. They take the derivatives of $K$ from a
 function \prog{Kfun(nu, t)}, the derivative of order \prog{nu} ($1\times d$) at \prog{t}
 ($1\times d$), \prog{NaN} outside the domain, and can be used directly when closed-form derivatives
 are available:
@@ -656,6 +965,7 @@ are available:
 \prog{spa\_ratio\_pdf} & Rice's expansion of the density of a ratio\\
 \prog{spa\_bi}, \prog{spa\_orthant2} & bivariate density and orthant probability\\
 \prog{spa\_tri}, \prog{spa\_mv}, \prog{spa\_orthant} & three and more dimensions\\
+\prog{spa\_cond} & conditional and lattice expansions (\S\,\ref{sec:cond}), any dimension\\
 \prog{qf\_Kmulti} & derivatives of the cgf of quadratic forms\\
 \prog{ncx2\_spa}, \prog{ncf\_spa}, \prog{dncf\_spa} & noncentral $\chi^2$, $F$ and doubly noncentral $F$\\
 \prog{spa\_uni\_hp}, \prog{spa\_bi\_hp} & variable precision\\
@@ -663,7 +973,15 @@ are available:
 \end{tabular}
 \end{center}
 The class \prog{CGF} builds \prog{Kfun} and the whitened derivatives (\prog{opts.Kwhite}) from the
-Taylor polynomials. See the help of each program.
+Taylor polynomials. See the help of each program. The conditional program is called as
+\begin{lstlisting}
+[P, f, info] = spa_cond(Kfun, x, A, M, opts)
+\end{lstlisting}
+with the options \prog{lattice}, \prog{sinh}, \prog{nG}, \prog{tau0}, \prog{Kwhite}, \prog{tail},
+\prog{density} and \prog{tauf} (a known saddlepoint for the density) in the structure \prog{opts};
+without \prog{Kwhite} the coefficients in the canonical coordinates are obtained by substituting the
+linear maps into the Taylor polynomial of $K$ at the saddlepoint, which loses digits when $K''$ is
+ill conditioned.
 
 \section{Validation}\label{sec:valid}
 
@@ -673,7 +991,7 @@ Taylor polynomials. See the help of each program.
 \item derivatives of the Taylor class against closed forms and finite differences, and the
 derivatives of a pair of quadratic forms by automatic differentiation through a generic Cholesky
 factorization against the trace recursion;
-\item the 409 reference values shared by the Julia and Python packages
+\item the 559 reference values shared by the Julia and Python packages
 (\prog{tests/julia\_reference.csv}, generated by \prog{test/reference\_values.jl} of the Julia package;
 \prog{tests/julia\_reference.jl} copies them): derivatives, saddlepoints, orthant probabilities with
 lower and mixed corners and saddlepoints with negative components, and densities in one to four
@@ -704,7 +1022,38 @@ $10^{-15}$ at order five. Over all the reference values (the noncentral $t$ at $
 the three Dickey--Fuller models), double-double agrees to the last digit except the density of
 model 2 at order five ($10^{-15}$) and order six ($4\times10^{-10}$, $\kappa\approx10^{23}$); for that
 model double precision has errors of $2\times10^{-9}$ at order three and gives no correct digit at
-order six.
+order six;
+\item the conditional expansions, lattice sums, quantiles and normalized densities against the Julia
+package 0.3.0: the 150 rows of the third part of \prog{julia\_reference.csv} and the 247 rows of
+\prog{tests/conditional\_reference.csv}, generated by \prog{tests/julia\_conditional\_reference.jl}
+from the Julia package (masses in two dimensions and of a Studentized mean, one, two and three tail
+components of a Gaussian vector with saddlepoints of every sign, \prog{spa\_cond} with closed-form
+derivatives, quantiles, and conditional expansions in \prog{BigFloat} with 256 bits). They agree to
+about $10^{-15}$, at most $8\times10^{-14}$, except \prog{spa\_cond} with closed-form derivatives,
+whose coefficients are obtained by substitution into the Taylor polynomial ($6\times10^{-13}$), and
+the mass of a Studentized density ($7\times10^{-11}$, its quadrature having the relative tolerance
+$10^{-9}$); the double-precision values agree with those in \prog{BigFloat} to $4\times10^{-15}$
+absolute for the gamma sum of order five and to $10^{-14}$ relative otherwise;
+\item every printed cell of the tables of the conditional paper, recomputed from the cumulant
+generating function alone against exact values (the rows in \prog{tests/conditional\_rows.txt},
+shared with the Julia and Python tests): the gamma sum given its total (450 cells, against the beta
+distribution), a quadratic form given another (300, against the exact conditional distribution by
+quadrature over the common component), the means of five and ten independent ratios of quadratic
+forms (150 of 155 cells, conditional on five and ten variables, against the exact quantiles of the
+paper; Skovgaard's formula at the median, where $1/\hat w-1/\hat z$ cancels in double precision, is
+left out), the logistic regression (189, against the exact distribution by dynamic programming) and
+the lattice sums (88), each relative error to its two printed digits;
+\item the consistency checks of the Julia tests: the expansions with $\mathcal B$ empty against
+\prog{tailprob} and \prog{density}; Gaussian vectors, for which the conditional expansions are exact
+at every order, with one, two and three tail components, saddlepoints of every sign, lower tails and
+mixed corners ($10^{-13}$); the Dirichlet distribution; \prog{spa\_cond} with closed-form derivatives
+and with the derivatives of \prog{CGF}; the leading term against the conditional
+Hauschildt--Robinson formula (20) of the paper ($10^{-13}$); the complement identities of the
+lattice tails ($10^{-14}$); binomial, negative binomial and Poisson tails and probabilities against
+exact values; the quantiles of the gamma and the noncentral $F$ (the expansion at the quantile equals
+$p$ to $10^{-12}\min(p,1-p)$, and the quantile of the normal distribution is exact); and the
+normalized densities, which integrate to one ($10^{-9}$ to $10^{-8}$), with the masses of the gamma
+distribution in one and two dimensions against their closed forms.
 \end{itemize}
 In addition, for all 24 points of the table of sample autocorrelations of the paper, the density and
 distribution function of two ratios computed by the package agree with those of the dedicated
@@ -725,6 +1074,12 @@ call & result\\
 \prog{r = studentized\_density(K, q, 'order', M, 'saddle', sd, 'refine', tf, 'precision', p)} & density of $X/\sqrt Y$; \prog{r.f}, \prog{r.saddle}, \prog{r.status}, \prog{r.info} (\prog{'refine'}, default \prog{true}: double-double when $\kappa>10^6$; \prog{p}: \prog{'double'} or \prog{'dd'})\\
 \prog{r = studentized\_tailprob(K, q, 'order', M, 'lower', tf, 'saddle', sd, 'precision', p)} & distribution function of $X/\sqrt Y$; \prog{r.F}, \prog{r.saddle}, \prog{r.status}, \prog{r.info.Fp}, \prog{r.info.kappa}\\
 \prog{r = studentized\_quantile(K, p, 'order', M, 'tol', tol)} & quantile of the expansion; \prog{r.q}, \prog{r.saddle}\\
+\prog{r = conditional\_tailprob(K, x, A, 'order', M, 'lower', tf, 'signs', s, 'lattice', tf, 'sinh', m, 'nG', n)} & $\pr(X_{\mathcal A}\geq x_{\mathcal A}\mid X_{\mathcal B}=x_{\mathcal B})$; \prog{r.F}, \prog{r.tau}, \prog{r.taut}, \prog{r.status}, \prog{r.info} (\prog{Fp}, \prog{kappa}, \prog{kappa\_den}, \prog{err}, \prog{nG}); \prog{m}: \prog{'saddle'} or \prog{'origin'}\\
+\prog{r = conditional\_density(K, x, A, 'order', M, 'lattice', tf)} & conditional density (probability for lattice variables); \prog{r.f}, \prog{r.tau}, \prog{r.taut}, \prog{r.status}, \prog{r.info} (\prog{kappa}, \prog{kappa\_den})\\
+\prog{r = tailprob(K, k, 'lattice', true, 'sinh', m)}, \prog{density(K, k, 'lattice', true)} & $\pr(S\geq k)$ and $\pr(S=k)$ of a lattice variable\\
+\prog{r = quantile(K, p, 'order', M, 'lower', tf, 'tol', tol)} & quantile of the expansion; \prog{r.q}, \prog{r.tau}, \prog{r.F}, \prog{r.iterations}, \prog{r.status}\\
+\prog{r = ratio\_quantile(K, p, 'order', M, 'lower', tf, 'tol', tol)} & quantile of the expansion of a ratio; \prog{r.r}, \prog{r.shat}, \prog{r.F}, \prog{r.iterations}, \prog{r.status}\\
+\prog{'normalize', true} or \prog{'normalize', c} in \prog{density}, \prog{ratio\_density}, \prog{studentized\_density} & normalized expansions; \prog{r.info.mass}\\
 \prog{sd = studentized\_saddlepoint(K, q)}, \prog{studentized\_locus(K, s, tguess)} & the saddlepoint and the saddlepoint locus\\
 \prog{[tau, info] = saddlepoint(K, x)} & the saddlepoint\\
 \prog{D = derivatives(K, t, N)} & \prog{D.nu}, \prog{D.value}\\
@@ -744,6 +1099,10 @@ call & result\\
 \begin{description}\setlength{\itemsep}{2pt}
 \item Bao, Y., Broda, S. A. and Kan, R. Inversion formulas and saddlepoint expansions for
 Studentized means. Working paper, 2026.
+\item Barndorff-Nielsen, O. E. and Cox, D. R. (1979). Edgeworth and saddle-point approximations with
+statistical applications. \emph{J. R. Statist. Soc. B} 41, 279--312.
+\item Broda, S. A. and Kan, R. Conditional and lattice saddlepoint expansions of arbitrary order.
+Working paper, 2026.
 \item Broda, S. A. and Kan, R. Uniform saddlepoint expansions for multivariate tail probabilities.
 Working paper, 2026.
 \item Butler, R. W. (2007). \emph{Saddlepoint Approximations with Applications}. Cambridge
@@ -752,10 +1111,13 @@ University Press.
 correlograms. \emph{Bernoulli} 4, 497--518.
 \item Daniels, H. E. (1954). Saddlepoint approximations in statistics. \emph{Ann. Math. Statist.} 25,
 631--650.
+\item Daniels, H. E. (1987). Tail probability approximations. \emph{Int. Statist. Rev.} 55, 37--48.
 \item Hauschildt, R. (1969). Saddlepoint approximations to distribution functions. Master's thesis,
 University of British Columbia, Vancouver.
 \item Kolassa, J. E. (2003). Multivariate saddlepoint tail probability approximations. \emph{Ann.
 Statist.} 31, 274--286.
+\item Kolassa, J. E. (2006). \emph{Series Approximation Methods in Statistics}, 3rd edition. Springer,
+New York.
 \item Kolassa, J. E. and Li, J. (2010). Multivariate saddlepoint approximations in tail probability and
 conditional inference. \emph{Bernoulli} 16, 1191--1207.
 \item Nabeya, S. and S{\o}rensen, B. E. (1994). Asymptotic distributions of the least-squares
@@ -763,6 +1125,8 @@ estimators and test statistics in the near unit root model with non-zero initial
 drift and trend. \emph{Econometric Theory} 10, 937--966.
 \item Nabeya, S. and Tanaka, K. (1990). A general approach to the limiting distribution for estimators
 in time series regression with nonstable autoregressive errors. \emph{Econometrica} 58, 145--163.
+\item Skovgaard, I. M. (1987). Saddlepoint expansions for conditional distributions. \emph{J. Appl.
+Probab.} 24, 875--887.
 \end{description}
 
 \end{document}

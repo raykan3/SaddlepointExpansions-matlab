@@ -66,3 +66,27 @@ fprintf('noncentral t: P(T <= %g), orders 1-3: %s (exact %.10f)\n', x, sprintf('
 fprintf('              density, orders 1-3:  %s (exact %.10f)\n', sprintf('%.10f ', f), nctpdf(x, n*nu, sqrt(n)*mu));
 Q = studentized_quantile(Kt, 0.05, 'order', 3);
 fprintf('              5%% quantile of T, order 3: %.8f (exact %.8f)\n', Q.q*sqrt(n), nctinv(0.05, n*nu, sqrt(n)*mu));
+
+%% 9. A conditional distribution (Broda and Kan, "Conditional and lattice saddlepoint expansions of
+% arbitrary order"): X = (U, U + V), U, V ~ Gamma(16) independent; given X_2 = 32, X_1/32 ~ Beta(16, 16)
+Kc = CGF(@(t) -16*log(1 - t(1) - t(2)) - 16*log(1 - t(2)), 2, 'domain', @(t) t(1) + t(2) < 1 && t(2) < 1);
+x1 = 32*betaincinv(0.9, 16, 16);                  % the 90% point
+F = conditional_tailprob(Kc, [x1 32], 1, 'order', 5).F;
+f = conditional_density(Kc, [x1 32], 1, 'order', 5).f;
+fex = exp(15*log(x1/32) + 15*log1p(-x1/32) + gammaln(32) - 2*gammaln(16))/32;
+fprintf('gamma sum given its total: relative errors of P(X1 >= x1 | X2 = 32) %s\n', sprintf('%9.1e', F/0.1 - 1));
+fprintf('                           relative errors of the conditional density %s\n', sprintf('%9.1e', f/fex - 1));
+
+%% 10. Lattice variables: a Poisson tail, and exact conditional inference in a logistic regression
+F = tailprob(poisson_cgf(5), 11, 'order', 4, 'lattice', true).F;
+fprintf('Poisson(5): P(S >= 11), orders 1-4: %s (exact %.8f)\n', sprintf('%.8f ', F), gammainc(5, 11));
+X = [ones(30, 1) mod((0:29)', 5) mod((0:29)', 3)];   % intercept and two integer covariates
+Kl = logistic_regression_cgf(X);                    % S = X'y under beta = 0
+F = conditional_tailprob(Kl, [15 37 15], 2, 'order', 4, 'lattice', true).F;
+fprintf('logistic regression: P(S1 >= 37 | S0 = 15, S2 = 15), orders 1-4: %s (exact 0.05242119)\n', sprintf('%.8f ', F));
+
+%% 11. Quantiles of the expansions and normalized densities, in saddlepoint space
+q = quantile(gamma_cgf(3), 0.05, 'order', 4);
+fprintf('gamma(3): 5%% point of the expansion of order 4 %.10f (exact %.10f)\n', q.q, gammaincinv(0.05, 3));
+r = density(gamma_cgf(3), 2, 'order', 4, 'normalize', true);
+fprintf('          normalized density at 2, orders 1-4: %s (exact %.12f)\n', sprintf('%.12f ', r.f), exp(2*log(2) - 2 - gammaln(3)));

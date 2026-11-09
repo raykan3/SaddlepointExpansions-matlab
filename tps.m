@@ -274,9 +274,7 @@ methods (Static)
       %TABLES multi-indices of total degree <= N in k variables (graded order) and the
       %   multiplication table, cached
       persistent cache
-      if isempty(cache), cache = containers.Map(); end
-      key = sprintf('%d_%d', k, N);
-      if isKey(cache, key), T = cache(key); return; end
+      if k <= size(cache, 1) && N+1 <= size(cache, 2) && ~isempty(cache{k, N+1}), T = cache{k, N+1}; return; end
       mi = zeros(0, k);
       for l = 0:N, mi = [mi; tps.comps(l, k)]; end %#ok<AGROW>
       n = size(mi, 1); deg = sum(mi, 2);
@@ -292,7 +290,7 @@ methods (Static)
       S = sparse(Tt, 1:numel(Tt), 1, n, numel(Tt));
       T = struct('mi', mi, 'deg', deg, 'n', n, 'base', base, 'lookup', lookup, 'I', I, 'J', J, 'S', S, ...
                  'fact', prod(factorial(mi), 2));
-      cache(key) = T;
+      cache{k, N+1} = T;                    % indexed by (k, N + 1): the lookup is the hot path of coef and mulC
    end
    function C = comps(l, k)
       if k == 1, C = l; return; end
