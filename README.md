@@ -15,7 +15,16 @@ for the density, distribution function and quantiles of `X/sqrt(Y)` (`studentize
 `studentized_tailprob`, `studentized_quantile`). The expansion of order `M` has relative error
 `O(n^-M)`; saddlepoints with negative components are handled by inclusion-exclusion.
 
-Version 0.2.3 (November 2026); version 0.2.2 of the Julia and Python packages has the same
+Version 0.3 adds the expansions of Broda and Kan, "Conditional and lattice saddlepoint expansions
+of arbitrary order": `conditional_tailprob` and `conditional_density` give `P(X_A >= x_A | X_B = x_B)`
+and the conditional density of every order, for any numbers of tail and conditioning components
+and for continuous and lattice variables, evaluated in the canonical coordinates of that paper,
+the first order being the double saddlepoint approximations of Skovgaard and of Barndorff-Nielsen
+and Cox; `'lattice', true` in `tailprob` and `density` for integer-valued vectors (`poisson_cgf`,
+`binomial_cgf`, `negative_binomial_cgf`, `logistic_regression_cgf`); `quantile` and
+`ratio_quantile`, by Newton's method in saddlepoint space; and `'normalize', true` for densities.
+
+Version 0.3.0 (November 2026); version 0.3.0 of the Julia and Python packages has the same
 functions.
 
 The cumulant generating function is supplied as an ordinary MATLAB function. All its derivatives
@@ -36,6 +45,19 @@ r = density(Kn, [3 3], 'order', 4);   r.f   % the joint density
 r = tailprob(Kn, [3 3], 'lower', true);     % P(mean1 <= 3, mean2 <= 3)
 ```
 
+A conditional distribution: `X = (U, U + V)` with independent `Gamma(16)` variables, so that given
+`X_2 = 32`, `X_1/32` is `Beta(16, 16)`:
+
+```matlab
+K = CGF(@(t) -16*log(1 - t(1) - t(2)) - 16*log(1 - t(2)), 2, 'domain', @(t) t(1) + t(2) < 1 && t(2) < 1);
+x1 = 32*betaincinv(0.9, 16, 16);                       % the 90% point
+conditional_tailprob(K, [x1 32], 1, 'order', 5).F      % P(X_1 >= x1 | X_2 = 32), orders 1 to 5; exact 0.1
+conditional_density(K, [x1 32], 1, 'order', 5).f
+```
+
+The five approximations of the tail probability have relative errors `2.5e-4`, `-7.0e-5`,
+`-5.6e-7`, `5.5e-8` and `1.3e-9`, those of the density `7.8e-3` to `1.4e-9`.
+
 ## Functions
 
 | | |
@@ -45,6 +67,12 @@ r = tailprob(Kn, [3 3], 'lower', true);     % P(mean1 <= 3, mean2 <= 3)
 | `density(K, x, 'order', M)` | densities of orders `1..M` (`r.f`) |
 | `ratio_density(K, r0, 'order', M)` | joint density of `R = (X_1/Y_1, ..., X_d/Y_d)` at `r0`, `d = numel(r0)`, `Y_j > 0`; `K` is the cgf of `(X, Y)` (dimension `2d`) or, for a common denominator, of `(X_1, ..., X_d, Y)` (dimension `d + 1`) |
 | `ratio_tailprob(K, r0, 'order', M, 'lower', tf, 'signs', s)` | `P(R >= r0)`, `P(R <= r0)` or a mixed corner |
+| `conditional_tailprob(K, x, A, 'order', M, 'lower', tf, 'signs', s, 'lattice', tf, 'sinh', m)` | `P(X_A >= x_A \| X_B = x_B)`, `B` the components not in `A`; `r.F`, `r.tau`, `r.taut` (the saddlepoint of `X_B`), `r.info.Fp` (every half-order) |
+| `conditional_density(K, x, A, 'order', M, 'lattice', tf)` | the conditional density of `X_A` given `X_B = x_B` (`P(S_A = k_A \| S_B = k_B)` for lattice variables) |
+| `tailprob(K, k, 'lattice', true, 'sinh', m)`, `density(K, k, 'lattice', true)` | `P(S >= k)` with the continuity correction and `P(S = k)` for an integer-valued `S`; `m = 'saddle'` (default) or `'origin'`, the expansion of `s/(2 sinh(s/2))` |
+| `quantile(K, p, 'order', M, 'lower', tf, 'tol', tol)` | the `q` with `P(X <= q) = p` (or `P(X >= q) = p`) under the expansion; `r.q`, `r.tau`, `r.F` |
+| `ratio_quantile(K, p, 'order', M, 'lower', tf, 'tol', tol)` | the same for a ratio `X_1/X_2`, `X_2 > 0`; `r.r`, `r.shat`, `r.F` |
+| `density(K, x, 'normalize', true)`, `ratio_density(K, r0, 'normalize', true)`, `studentized_density(K, q, 'normalize', true)` | the expansions divided by their masses (`r.info.mass`, computed in saddlepoint space; pass them back as `'normalize', r.info.mass`) |
 | `studentized_density(K, q, 'order', M)` | density of the Studentized mean `Q = X/sqrt(Y)`, `Y > 0`, at `q`; `K` is the joint cgf of `(X, Y)` (dimension 2) |
 | `studentized_tailprob(K, q, 'order', M, 'lower', tf)` | `P(Q >= q)` or `P(Q <= q)`; `r.F`, `r.info.Fp` (every half-order) |
 | `studentized_quantile(K, p, 'order', M)` | the `q` with `P(Q <= q) = p` under the expansion |
@@ -53,6 +81,7 @@ r = tailprob(Kn, [3 3], 'lower', true);     % P(mean1 <= 3, mean2 <= 3)
 | `derivatives(K, t, N)` | all derivatives of orders `<= N` at `t` (`D.nu`, `D.value`) |
 | `reflect`, `marginal`, `linear_combination`, `sample_mean`, `shift`, `K1 + K2` | transformations |
 | `normal_cgf`, `gamma_cgf`, `ncx2_cgf`, `exponential_sums_cgf`, `quadratic_forms_cgf`, `wishart_diag_cgf`, `common_component_cgf`, `uniform_cgf` | library of cumulant generating functions |
+| `poisson_cgf(lam)`, `binomial_cgf(m, p)`, `negative_binomial_cgf(r, p)`, `logistic_regression_cgf(X, 'beta', b)` | lattice variables, and the sufficient statistic `X'y` of a logistic regression |
 | `sinhc`, `sincu` | `sinh(x)/x` and `sin(x)/x` with the removable singularity handled |
 | `tps` | the Taylor class (`tps.vars(k, N)`, `coef(p, nu)`) |
 | `dd`, `tpsdd`, `taylordd(K, t, N)` | double-double numbers (about 32 digits), the Taylor class in double-double, and the Taylor polynomial of `K` in double-double |
@@ -92,19 +121,51 @@ studentized_density(K, 6/sqrt(n), 'order', 3).f/sqrt(n)           % density of T
 studentized_quantile(K, 0.05, 'order', 3).q*sqrt(n)                % the 5% quantile of T
 ```
 
+Lattice variables: with `'lattice', true` the continuity-corrected expansions of `P(S >= k)` and
+the expansions of `P(S = k)`; conditioned on other components, the exact conditional inference
+of a logistic regression with integer covariates:
+
+```matlab
+tailprob(poisson_cgf(5), 11, 'order', 4, 'lattice', true).F     % P(S >= 11), exact 0.01369527
+density(poisson_cgf(5), 11, 'order', 4, 'lattice', true).f      % P(S = 11), exact 0.00824218
+X = [ones(30, 1) mod((0:29)', 5) mod((0:29)', 3)];             % intercept and two covariates
+K = logistic_regression_cgf(X);                                 % S = X'y under beta = 0
+conditional_tailprob(K, [15 37 15], 2, 'order', 4, 'lattice', true).F   % P(S_1 >= 37 | S_0 = 15, S_2 = 15)
+conditional_density(K, [15 37 15], 2, 'order', 4, 'lattice', true).f    % P(S_1 = 37 | S_0 = 15, S_2 = 15)
+```
+
+Quantiles of the expansions and normalized densities, both computed in saddlepoint space (the point
+parametrized by its saddlepoint, `x = K'(s)`, so that no saddlepoint equation is solved):
+
+```matlab
+quantile(gamma_cgf(3), 0.05, 'order', 4).q                      % 0.81768626 (exact 0.81769145)
+quantile(gamma_cgf(3), 1e-6, 'order', 4, 'lower', false).q      % the upper 1e-6 point
+r = density(gamma_cgf(3), 2, 'order', 4, 'normalize', true);    % exact at every order for the gamma
+r.f, r.info.mass                                                % reuse: 'normalize', r.info.mass
+```
+
 The full manual is `doc/manual.pdf`.
 
 ## Folders
 
 * the top folder: `CGF`, `tps`, the library and `spx_setup`;
-* `engine/`: the low-level programs of the paper (`spa_saddle`, `spa_uni`, `spa_bi`,
-  `spa_orthant2`, `spa_orthant`, `spa_mv`, `spa_tri`, `spa_ratio_pdf`, `qf_Kmulti`, the
-  noncentral chi-squared and F routines, ...), which take the derivatives from a function
+* `engine/`: the low-level programs of the papers (`spa_saddle`, `spa_uni`, `spa_bi`,
+  `spa_orthant2`, `spa_orthant`, `spa_mv`, `spa_tri`, `spa_cond`, `spa_ratio_pdf`, `qf_Kmulti`,
+  the noncentral chi-squared and F routines, ...), which take the derivatives from a function
   `Kfun(nu, t)` and can be used directly when closed-form derivatives are available;
-* `tests/test_spx.m`: checks against closed forms and against the 409 reference values shared
+* `tests/test_spx.m`: checks against closed forms and against the 559 reference values shared
   by the Julia and Python packages (`julia_reference.csv`, made by `julia_reference.jl` from
   `test/reference_values.jl` of the Julia package); the expansions agree to about `1e-13`
   relative (at most `1e-11`), and those for several ratios are also checked against closed forms;
+  the conditional expansions, lattice sums, quantiles and normalized densities agree with the Julia
+  package to about `1e-15` (at most `7e-11`, the mass of a Studentized density), also on the
+  further cases of `conditional_reference.csv` (made by `julia_conditional_reference.jl` from the
+  Julia package, among them values in `BigFloat`), and every printed cell of the tables of the
+  conditional paper (`conditional_rows.txt`: the gamma sum given its total, a quadratic form given
+  another, the means of five and ten ratios of quadratic forms, the logistic regression and the
+  lattice sums, 1177 cells) is reproduced from the cumulant generating function alone, except
+  Skovgaard's formula at the median, which cancels in double precision (five cells, which the Julia
+  tests evaluate in `BigFloat`);
   the Studentized-mean functions are checked as in the Julia and Python packages, against the
   noncentral t and against the reference values of the Dickey-Fuller t-ratio
   (`tests/dickey_fuller_cgf.m`, a test fixture); the double-double arithmetic is checked against
@@ -119,7 +180,9 @@ The same expansions are in the Julia package
 [SaddlepointExpansions.jl](https://github.com/s-broda/SaddlepointExpansions.jl) and the Python
 package [saddlepoint-expansions](https://github.com/s-broda/saddlepoint-expansions)
 (`Pkg.add("SaddlepointExpansions")` and `pip install saddlepoint-expansions`). The MATLAB
-computations are in double precision; the Julia package also runs in `BigFloat`. Where the terms
+computations are in double precision; the Julia package also runs in `BigFloat` (for the
+conditional expansions with one tail component it then evaluates the orthant integrals exactly by
+a recursion). Where the terms
 of the density of a Studentized mean cancel strongly (cancellation indicator above `1e6`), the Julia
 package repeats it in `BigFloat` and this package in double-double arithmetic (`dd`, `tpsdd`; about
 32 digits, `r.info.refined = 'double-double'`), which agrees with the Julia values to the last digit
@@ -138,6 +201,10 @@ If you use this package, please cite the paper:
 and, for the Studentized-mean functions,
 
 > Bao, Y., Broda, S. A. and Kan, R. Inversion formulas and saddlepoint expansions for Studentized means.
+
+and, for the conditional and lattice expansions,
+
+> Broda, S. A. and Kan, R. Conditional and lattice saddlepoint expansions of arbitrary order.
 
 The package itself is archived on Zenodo, DOI [10.5281/zenodo.23940456](https://doi.org/10.5281/zenodo.23940456)
 (all versions; version 0.2.3 is [10.5281/zenodo.23940457](https://doi.org/10.5281/zenodo.23940457)).

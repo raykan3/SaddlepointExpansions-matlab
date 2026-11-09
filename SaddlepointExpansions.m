@@ -1,7 +1,7 @@
 function SaddlepointExpansions
 % SaddlepointExpansions for MATLAB: saddlepoint expansions of any order from the cumulant
 % generating function (Broda and Kan); MATLAB counterpart of SaddlepointExpansions.jl.
-% Version 0.2.3 (November 2026); version 0.2.2 of the Julia and Python packages has the same
+% Version 0.3.0 (November 2026); version 0.3.0 of the Julia and Python packages has the same
 % functions.
 %
 % Cumulant generating functions and expansions
@@ -10,7 +10,14 @@ function SaddlepointExpansions
 %                           reflect, marginal, linear_combination, sample_mean, shift, plus;
 %                           for a Studentized mean X/sqrt(Y) (Bao, Broda and Kan):
 %                           studentized_density, studentized_tailprob,
-%                           studentized_quantile, studentized_saddlepoint, studentized_locus
+%                           studentized_quantile, studentized_saddlepoint, studentized_locus;
+%                           conditional distributions, continuous and lattice (Broda and Kan,
+%                           "Conditional and lattice saddlepoint expansions of arbitrary order"):
+%                           conditional_tailprob, conditional_density, and the option
+%                           'lattice', true of tailprob and density; quantiles of the
+%                           expansions in saddlepoint space: quantile, ratio_quantile;
+%                           normalized densities: 'normalize', true of density, ratio_density
+%                           and studentized_density
 %   tps                   - truncated multivariate power series (Taylor-mode differentiation)
 %   dd                    - double-double numbers (about 32 digits)
 %   tpsdd                 - truncated power series in double-double (CGF/taylordd; the
@@ -26,10 +33,16 @@ function SaddlepointExpansions
 %   wishart_diag_cgf      - diagonal of a Wishart matrix
 %   common_component_cgf  - noncentral chi-squared variables with a common component
 %   uniform_cgf           - uniform distribution
+%   poisson_cgf           - Poisson (lattice)
+%   binomial_cgf          - binomial (lattice)
+%   negative_binomial_cgf - negative binomial (lattice)
+%   logistic_regression_cgf - the sufficient statistic of a logistic regression (lattice for
+%                           integer covariates)
 %   sinhc, sincu          - sinh(x)/x and sin(x)/x, also for series
 %
 % Engine (folder engine): spa_saddle, spa_uni, spa_bi, spa_orthant2, spa_orthant, spa_mv, spa_tri,
-%   spa_ratio_pdf, qf_Kmulti, ncx2_spa, ncf_spa, dncf_spa, ... (derivative interface Kfun(nu, t))
+%   spa_cond, spa_ratio_pdf, qf_Kmulti, ncx2_spa, ncf_spa, dncf_spa, ... (derivative interface
+%   Kfun(nu, t))
 %
 % Tests, examples and manual: tests/test_spx (with the fixture tests/dickey_fuller_cgf, the
 %   Dickey-Fuller t-ratio), examples/demo_spx, doc/manual.pdf
